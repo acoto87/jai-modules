@@ -1,0 +1,16 @@
+NANOVG_GL2 :: true;
+NANOVG_GL3 :: false;
+NANOVG_GLES2 :: false;
+NANOVG_GLES3 :: false;
+
+NANOVG_GL :: NANOVG_GL2 || NANOVG_GL3 || NANOVG_GLES2 || NANOVG_GLES3;
+NANOVG_GL_USE_UNIFORMBUFFER :: NANOVG_GL3;
+
+NANOVG_GL_USE_STATE_FILTER :: true;
+NVG_DISABLE_CULL_FACE :: true;
+
+#load "nanovg.jai";
+
+#if NANOVG_GL {
+    #load "nanovg_gl.jai";
+}
