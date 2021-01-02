@@ -85,8 +85,6 @@ main :: () {
     glfwSetTime(0);
 	prevt := glfwGetTime();
 
-    using glGetProcedures();
-
     while (!glfwWindowShouldClose(window)) {
         t := glfwGetTime();
         dt := t - prevt;

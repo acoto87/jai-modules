@@ -101,6 +101,8 @@ free :: inline (p: *$T, allocator: Allocator = null) {
     _free(cast(*void) p);
 }
 
+tempAllocator :: __temporary_allocator;
+
 copy :: inline (src: [] $T, dst: [] T, count: s64) {
     copy(src, 0, dst, 0, count);
 }
@@ -421,34 +423,21 @@ strcmp :: (a: *u8, b: *u8) -> s32 #must {
     return 0;
 }
 
-toString :: (c_string: *u8) -> string {
-    p := c_string;
-    while << p {
-        p += 1;
-    }
-    count := p - c_string;
-
+toString :: (cString: *u8) -> string {
     s: string = ---;
-    s.data = c_string;
-    s.count = count;
-
+    s.data = cString;
+    s.count = strlen(cString);
     return s;
 }
 
-toCString :: (s: string) -> *u8 {
-    result : *u8 = _alloc(s.count + 1);
+toCString :: (s: string, allocator: Allocator = null) -> *u8 {
+    result := alloc(u8, s.count + 1, allocator);
     memoryCopy(result, s.data, s.count);
     result[s.count] = 0;
     return result;
 }
 
-glGetProcedures :: inline () -> *GLProcedures {
-    return *GL.gl;
-}
-
 glCheckOpenGLVersion :: () {
-    using glGetProcedures();
-
     vendor := glGetString(GL_VENDOR);
     print("Vendor: %\n", toString(vendor));
 
@@ -466,8 +455,7 @@ glCheckOpenGLVersion :: () {
 }
 
 glLoad :: (getProcAddress: GetProcAddressFunction = null) {
-    gl := glGetProcedures();
-    glLoad(gl, getProcAddress);
+    gl_load(*gl, getProcAddress);
 }
 
 #scope_file
@@ -476,19 +464,11 @@ Basic :: #import "Basic";
 _alloc :: Basic.alloc;
 _realloc :: Basic.realloc;
 _free :: Basic.free;
+__temporary_allocator :: Basic.__temporary_allocator;
 
 Random :: #import "Random";
 
-GL :: #import "GL";
-GLProcedures :: GL.GL_Procedures;
-GetProcAddressFunction :: GL.GetProcAddressFunction;
-glGetString :: GL.glGetString;
-glLoad :: GL.gl_load;
-GL_VENDOR :: GL.GL_VENDOR;
-GL_RENDERER :: GL.GL_RENDERER;
-GL_VERSION :: GL.GL_VERSION;
-GL_SHADING_LANGUAGE_VERSION :: GL.GL_SHADING_LANGUAGE_VERSION;
-GL_EXTENSIONS :: GL.GL_EXTENSIONS;
+#import "GL";
 
 #if OS == .WINDOWS {
     crt :: #foreign_system_library "msvcrt";

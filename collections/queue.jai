@@ -56,7 +56,7 @@ clear :: (queue: *$T/Queue) {
             DONE;
         }
 
-        return "__unnused_var := 0;";
+        return null;
     }();
 
     queue.count = 0;

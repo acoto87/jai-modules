@@ -82,7 +82,7 @@ clear :: (map: *$T/HashMap) {
             DONE;
         }
 
-        return "__unnused_var := 0;";
+        return null;
     }();
 
     map.count = 0;
@@ -138,7 +138,7 @@ removeKey :: (map: *$T/HashMap, key: T.TKey) {
                 DONE;
             }
 
-            return "__unnused_var := 0;";
+            return null;
         }();
 
         map.count -= 1;
@@ -210,7 +210,7 @@ insert :: (map: *$T/HashMap, key: T.TKey, value: T.TValue) {
                 DONE;
             }
 
-            return "__unnused_var := 0;";
+            return null;
         }();
 
         return;

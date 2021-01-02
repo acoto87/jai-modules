@@ -418,8 +418,6 @@ glnvg__deleteTexture :: (gl: *GLNVGcontext, id: s32) -> bool {
 }
 
 glnvg__dumpShaderError :: (shader: GLuint, name: string, type: string) {
-    using glGetProcedures();
-
     str: [512+1] GLchar;
     len: GLsizei = 0;
     glGetShaderInfoLog(shader, 512, *len, str.data);
@@ -429,8 +427,6 @@ glnvg__dumpShaderError :: (shader: GLuint, name: string, type: string) {
 }
 
 glnvg__dumpProgramError :: (prog: GLuint, name: string) {
-    using glGetProcedures();
-
     str: [512+1] GLchar;
     len: GLsizei = 0;
     glGetProgramInfoLog(prog, 512, *len, str.data);
@@ -440,8 +436,6 @@ glnvg__dumpProgramError :: (prog: GLuint, name: string) {
 }
 
 glnvg__checkError :: (gl: *GLNVGcontext, str: string) {
-    using glGetProcedures();
-
     if (!(gl.flags & .NVG_DEBUG)) {
         return;
     }
@@ -464,8 +458,6 @@ glnvg__getErrorCodeName :: (errCode: GLenum) -> string {
 }
 
 glnvg__createShader :: (shader: *GLNVGshader, name: string, header: string, opts: string, vshader: string, fshader: string) -> bool {
-    using glGetProcedures();
-
     status: GLint;
 
     source: [3] *u8;
@@ -523,8 +515,6 @@ glnvg__createShader :: (shader: *GLNVGshader, name: string, header: string, opts
 }
 
 glnvg__deleteShader :: (shader: *GLNVGshader) {
-    using glGetProcedures();
-
     if (shader.prog != 0)
         glDeleteProgram(shader.prog);
     if (shader.vert != 0)
@@ -534,8 +524,6 @@ glnvg__deleteShader :: (shader: *GLNVGshader) {
 }
 
 glnvg__getUniforms :: (shader: *GLNVGshader) {
-    using glGetProcedures();
-
     shader.loc[GLNVGuniformLoc.GLNVG_LOC_VIEWSIZE] = glGetUniformLocation(shader.prog, "viewSize");
     shader.loc[GLNVGuniformLoc.GLNVG_LOC_TEX] = glGetUniformLocation(shader.prog, "tex");
 
@@ -547,8 +535,6 @@ glnvg__getUniforms :: (shader: *GLNVGshader) {
 }
 
 glnvg__renderCreate :: (uptr: *void) -> bool {
-    using glGetProcedures();
-
     gl := cast(*GLNVGcontext) uptr;
     align: s32 = 4;
 
@@ -770,8 +756,6 @@ glnvg__renderCreate :: (uptr: *void) -> bool {
 }
 
 glnvg__renderCreateTexture :: (uptr: *void, type: NVGtexture, w: s32, h: s32, imageFlags: NVGimageFlags, data: *u8) -> s32 {
-    using glGetProcedures();
-
     gl := cast(*GLNVGcontext) uptr;
     tex := glnvg__allocTexture(gl);
 
@@ -885,8 +869,6 @@ glnvg__renderDeleteTexture :: (uptr: *void, image: s32) -> bool {
 }
 
 glnvg__renderUpdateTexture :: (uptr: *void, image: s32, x: s32, y: s32, w: s32, h: s32, data: *u8) -> bool {
-    using glGetProcedures();
-
     gl := cast(*GLNVGcontext) uptr;
 
     tex := glnvg__findTexture(gl, image);
@@ -1045,8 +1027,6 @@ glnvg__convertPaint :: (gl: *GLNVGcontext, frag: *GLNVGfragUniforms, paint: *NVG
 }
 
 glnvg__setUniforms :: (gl: *GLNVGcontext, uniformOffset: s32, image: s32) {
-    using glGetProcedures();
-
     #if NANOVG_GL_USE_UNIFORMBUFFER {
         glBindBufferRange(GL_UNIFORM_BUFFER, cast(u32) GLNVGuniformBindings.GLNVG_FRAG_BINDING, gl.fragBuf, uniformOffset, size_of(GLNVGfragUniforms));
     } else {
@@ -1074,8 +1054,6 @@ glnvg__renderViewport :: (uptr: *void, width: f32, height: f32, devicePixelRatio
 }
 
 glnvg__fill :: (gl: *GLNVGcontext, call: *GLNVGcall) {
-    using glGetProcedures();
-
     paths := *gl.paths[call.pathOffset];
     npaths := call.pathCount;
 
@@ -1121,8 +1099,6 @@ glnvg__fill :: (gl: *GLNVGcontext, call: *GLNVGcall) {
 }
 
 glnvg__convexFill :: (gl: *GLNVGcontext, call: *GLNVGcall) {
-    using glGetProcedures();
-
     paths := *gl.paths[call.pathOffset];
     npaths := call.pathCount;
 
@@ -1139,8 +1115,6 @@ glnvg__convexFill :: (gl: *GLNVGcontext, call: *GLNVGcall) {
 }
 
 glnvg__stroke :: (gl: *GLNVGcontext, call: *GLNVGcall) {
-    using glGetProcedures();
-
     paths := *gl.paths[call.pathOffset];
     npaths := call.pathCount;
 
@@ -1189,8 +1163,6 @@ glnvg__stroke :: (gl: *GLNVGcontext, call: *GLNVGcall) {
 }
 
 glnvg__triangles :: (gl: *GLNVGcontext, call: *GLNVGcall) {
-    using glGetProcedures();
-
     glnvg__setUniforms(gl, call.uniformOffset, call.image);
     glnvg__checkError(gl, "triangles fill");
 
@@ -1242,8 +1214,6 @@ glnvg__blendCompositeOperation :: (op: NVGcompositeOperationState) -> GLNVGblend
 }
 
 glnvg__renderFlush :: (uptr: *void) {
-    using glGetProcedures();
-
     gl := cast(*GLNVGcontext) uptr;
 
     if (gl.ncalls > 0) {
@@ -1640,8 +1610,6 @@ glnvg__renderTriangles :: (uptr: *void, paint: *NVGpaint, compositeOperation: NV
 }
 
 glnvg__renderDelete :: (uptr: *void) {
-    using glGetProcedures();
-
     gl := cast(*GLNVGcontext) uptr;
     if (gl == null) return;
 

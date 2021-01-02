@@ -53,7 +53,7 @@ clear :: (heap: *$T/BinaryHeap) {
             DONE;
         }
 
-        return "__unnused_var := 0;";
+        return null;
     }();
 
     heap.count = 0;

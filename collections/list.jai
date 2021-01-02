@@ -52,7 +52,7 @@ clear :: (list: *$T/List) {
             DONE;
         }
 
-        return "__unnused_var := 0;";
+        return null;
     }();
 
     list.count = 0;
@@ -171,7 +171,7 @@ removeAtRange :: (list: *$T/List, index: s64, count: s64) {
             DONE;
         }
 
-        return "__unnused_var := 0;";
+        return null;
     }();
 
     memoryMove(list.items + index, list.items + index + count, list.count - index - count);

@@ -52,7 +52,7 @@ clear :: (stack: *$T/Stack) {
             DONE;
         }
 
-        return "__unnused_var := 0;";
+        return null;
     }();
 
     stack.count = 0;
