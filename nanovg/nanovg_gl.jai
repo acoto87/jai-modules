@@ -93,6 +93,9 @@ builder_to_string :: Basic.builder_to_string;
 
 #import "GL";
 
+// @Note: This constant is missing from gl_core.jai in compiler modules
+GL_GENERATE_MIPMAP :: 0x8191;
+
 GLNVGuniformLoc :: enum s32 {
     GLNVG_LOC_VIEWSIZE :: 0;
     GLNVG_LOC_TEX :: 1;
