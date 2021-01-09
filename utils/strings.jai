@@ -33,3 +33,12 @@ toCString :: (s: string, allocator: Allocator = null) -> *u8 {
     result[s.count] = 0;
     return result;
 }
+
+StringBuilder :: Basic.String_Builder;
+freeBuffers :: Basic.free_buffers;
+printToBuilder :: Basic.print_to_builder;
+builderToString :: Basic.builder_to_string;
+
+#scope_file
+
+Basic :: #import "Basic";

@@ -50,28 +50,28 @@ TAU64 :: Math.TAU64;
 PI    :: Math.PI;
 PI64  :: Math.PI64;
 
-F32_MIN        :: Math.FLOAT32_MIN;
-F32_MAX        :: Math.FLOAT32_MAX;
-F32_INFINITY   :: Math.FLOAT32_INFINITY;
-F32_NAN        :: Math.FLOAT32_NAN;
+F32_MIN        : f32 : Math.FLOAT32_MIN;
+F32_MAX        : f32 : Math.FLOAT32_MAX;
+F32_INFINITY   : f32 : Math.FLOAT32_INFINITY;
+F32_NAN        : f32 : Math.FLOAT32_NAN;
 
-F64_MIN        :: Math.FLOAT64_MIN;
-F64_MAX        :: Math.FLOAT64_MAX;
-F64_INFINITY   :: Math.FLOAT64_INFINITY;
-F64_NAN        :: Math.FLOAT64_NAN;
+F64_MIN        : f64 : Math.FLOAT64_MIN;
+F64_MAX        : f64 : Math.FLOAT64_MAX;
+F64_INFINITY   : f64 : Math.FLOAT64_INFINITY;
+F64_NAN        : f64 : Math.FLOAT64_NAN;
 
-S8_MIN  :: Math.S8_MIN;
-S8_MAX  :: Math.S8_MAX;
-U8_MAX  :: Math.U8_MAX;
-S16_MIN :: Math.S16_MIN;
-S16_MAX :: Math.S16_MAX;
-U16_MAX :: Math.U16_MAX;
-S32_MIN :: Math.S32_MIN;
-S32_MAX :: Math.S32_MAX;
-U32_MAX :: Math.U32_MAX;
-S64_MIN :: Math.S64_MIN;
-S64_MAX :: Math.S64_MAX;
-U64_MAX :: Math.U64_MAX;
+S8_MIN  : s8 : Math.S8_MIN;
+S8_MAX  : s8 : Math.S8_MAX;
+U8_MAX  : u8 : Math.U8_MAX;
+S16_MIN : s16 : Math.S16_MIN;
+S16_MAX : s16 : Math.S16_MAX;
+U16_MAX : u16 : Math.U16_MAX;
+S32_MIN : s32 : Math.S32_MIN;
+S32_MAX : s32 : Math.S32_MAX;
+U32_MAX : u32 : Math.U32_MAX;
+S64_MIN : s64 : Math.S64_MIN;
+S64_MAX : s64 : Math.S64_MAX;
+U64_MAX : u64 : Math.U64_MAX;
 
 #scope_file
 

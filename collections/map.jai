@@ -105,6 +105,16 @@ get :: (map: *$T/HashMap, key: T.TKey) -> bool, T.TValue {
     return false, map.defaultValue;
 }
 
+getRef :: (map: *$T/HashMap, key: T.TKey) -> bool, *T.TValue {
+    assert(map.entries != null);
+
+    found, entry := getEntry(map, key);
+    if (found) {
+        return true, *entry.value;
+    }
+    return false, null;
+}
+
 set :: (map: *$T/HashMap, key: T.TKey, value: T.TValue) {
     assert(map.entries != null);
 

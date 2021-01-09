@@ -6,6 +6,7 @@ f64 :: float64;
 #load "arrays.jai";
 #load "strings.jai";
 #load "random.jai";
+#load "log.jai";
 
 clear :: inline (value: *$T) {
     assert(value != null);
@@ -33,7 +34,24 @@ measure :: (message: string, code: Code, prev: Code = null, post: Code = null) #
 }
 
 time_t :: s64;
-time :: (destTime: *time_t) -> time_t #foreign crt;
+
+tm :: struct {
+    sec : s32; // seconds after the minute: [0-60]
+    min : s32; // minutes after the hour: [0-59]
+    hour : s32; // hours after midnight: [0-23]
+    mday : s32; // day of the month: [1-31]
+    mon : s32; // months since January: [0-11]
+    year : s32; // years since 1900
+    wday : s32; // days since Sunday: [0-6]
+    yday : s32; // days since January 1: [0-365]
+    isdst : s32; // daylight saving time flag: < 0, 0, or > 0
+
+    gmtoff: s64;
+    zone: *u8;
+}
+
+time :: (t: *time_t) -> time_t #foreign crt;
+localtime :: (t: *time_t) -> *tm #foreign crt;
 
 FILE :: void;
 
@@ -47,14 +65,22 @@ ftell :: (stream: *FILE) -> s64 #foreign crt;
 fread :: (ptr: *void, size: s64, count: s64, stream: *FILE) -> s64 #foreign crt;
 fwrite :: (ptr: *void, size: s64, count: s64, stream: *FILE) -> s64 #foreign crt;
 fseek :: (stream: *FILE, offset: s64, whence: s32) -> s32 #foreign crt;
+#if OS == .WINDOWS {
+    access :: (path: *u8, mode: s32) -> s32 #foreign crt "_access";
+} else if OS == .LINUX {
+    access :: (path: *u8, mode: s32) -> s32 #foreign crt;
+}
 
 getTime :: Basic.get_time;
 assert :: Basic.assert;
 print :: Basic.print;
 sprint :: Basic.sprint;
+tprint :: Basic.tprint;
+logPrint :: Basic.logprint;
 formatFloat :: Basic.formatFloat;
 FormatFloat :: Basic.FormatFloat;
 exit :: Basic.exit;
+resetTemporaryStorage :: Basic.reset_temporary_storage;
 
 glCheckOpenGLVersion :: () {
     vendor := glGetString(GL_VENDOR);
