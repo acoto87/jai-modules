@@ -8,16 +8,6 @@ f64 :: float64;
 #load "random.jai";
 #load "log.jai";
 
-clear :: inline (value: *$T) {
-    assert(value != null);
-    memorySet(value, 0);
-}
-
-clear :: inline (array: [] $T) {
-    assert(array.data != null);
-    memorySet(array.data, 0, array.count);
-}
-
 measure :: (message: string, code: Code, prev: Code = null, post: Code = null) #expand {
     print("--- Start % ---\n", message);
     #if prev {

@@ -426,7 +426,7 @@ nvgRestore :: (ctx: *NVGcontext) {
 // Resets current render state to default values. Does not affect the render state stack.
 nvgReset :: (ctx: *NVGcontext) {
     state := nvg__getState(ctx);
-    clear(state);
+    memoryClear(state);
 
     nvg__setPaintColor(*state.fill, nvgRGBA(255,255,255,255));
     nvg__setPaintColor(*state.stroke, nvgRGBA(0,0,0,255));
@@ -608,7 +608,7 @@ nvgScale :: (ctx: *NVGcontext, x: f32, y: f32) {
 // There should be space for 6 floats in the return buffer for the values a-f.
 nvgCurrentTransform :: (ctx: *NVGcontext, xform: [] f32) {
     state := nvg__getState(ctx);
-    copy(state.xform, xform, 6);
+    arrayCopy(state.xform, xform, 6);
 }
 
 // The following functions can be used to make calculations on 2x3 transformation matrices.
@@ -674,9 +674,9 @@ nvgTransformMultiply :: (t: [] f32, s: [] f32) {
 // Sets the transform to the result of multiplication of two transforms, of A = B*A.
 nvgTransformPremultiply :: (t: [] f32, s: [] f32) {
     s2: [6] f32 = ---;
-    copy(s, s2, 6);
+    arrayCopy(s, s2, 6);
     nvgTransformMultiply(s2, t);
-    copy(s2, t, 6);
+    arrayCopy(s2, t, 6);
 }
 
 // Sets the destination to inverse of specified transform.
@@ -927,7 +927,7 @@ nvgIntersectScissor :: (ctx: *NVGcontext, x: f32, y: f32, w: f32, h: f32) {
     // Transform the current scissor rect into current transform space.
     // If there is difference in rotation, this will be approximation.
     pxform: [6] f32 = ---;
-    copy(state.scissor.xform, pxform, 6);
+    arrayCopy(state.scissor.xform, pxform, 6);
 
     ex := state.scissor.extent[0];
     ey := state.scissor.extent[1];
@@ -949,7 +949,7 @@ nvgIntersectScissor :: (ctx: *NVGcontext, x: f32, y: f32, w: f32, h: f32) {
 // Reset and disables scissoring.
 nvgResetScissor :: (ctx: *NVGcontext) {
     state := nvg__getState(ctx);
-    clear(state.scissor.xform);
+    arrayClear(state.scissor.xform);
     state.scissor.extent[0] = -1.0;
     state.scissor.extent[1] = -1.0;
 }
@@ -2013,7 +2013,6 @@ nvgCreateInternal :: (params: *NVGparams) -> *NVGcontext {
 
     // Init font rendering
     fontParams: FONSparams;
-    clear(*fontParams);
     fontParams.width = NVG_INIT_FONTIMAGE_SIZE;
     fontParams.height = NVG_INIT_FONTIMAGE_SIZE;
     fontParams.flags = .FONS_ZERO_TOPLEFT;
@@ -2146,7 +2145,7 @@ nvg__hue :: (h: f32, m1: f32, m2: f32) -> f32 {
 }
 
 nvg__setPaintColor :: (p: *NVGpaint, color: NVGcolor) {
-    clear(p);
+    memoryClear(p);
     nvgTransformIdentity(p.xform);
     p.radius = 0.0;
     p.feather = 1.0;
@@ -2247,7 +2246,7 @@ nvg__addPath :: (ctx: *NVGcontext) {
     }
 
     path := *ctx.cache.paths[ctx.cache.npaths];
-    clear(path);
+    memoryClear(path);
     path.first = cast(s32) ctx.cache.npoints;
     path.winding = .NVG_CCW;
 
@@ -2280,7 +2279,7 @@ nvg__addPoint :: (ctx: *NVGcontext, x: f32, y: f32, flags: NVGpointFlags) {
     }
 
     pt := *ctx.cache.points[ctx.cache.npoints];
-    clear(pt);
+    memoryClear(pt);
     pt.x = x;
     pt.y = y;
     pt.flags = flags;

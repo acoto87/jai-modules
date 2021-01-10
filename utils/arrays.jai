@@ -1,8 +1,13 @@
-copy :: inline (src: [] $T, dst: [] T, count: s64) {
-    copy(src, 0, dst, 0, count);
+arrayCopy :: inline (src: [] $T, dst: [] T) {
+    assert(dst.count >= src.count);
+    arrayCopy(src, 0, dst, 0, src.count);
 }
 
-copy :: inline (src: [] $T, srcIdx: s64, dst: [] T, dstIdx: s64, count: s64) {
+arrayCopy :: inline (src: [] $T, dst: [] T, count: s64) {
+    arrayCopy(src, 0, dst, 0, count);
+}
+
+arrayCopy :: inline (src: [] $T, srcIdx: s64, dst: [] T, dstIdx: s64, count: s64) {
     assert(srcIdx >= 0 && srcIdx < src.count);
     assert(dstIdx >= 0 && dstIdx < dst.count);
     assert(count >= 0);
@@ -10,6 +15,11 @@ copy :: inline (src: [] $T, srcIdx: s64, dst: [] T, dstIdx: s64, count: s64) {
     assert(count <= dst.count - dstIdx);
 
     memoryCopy(dst.data + dstIdx, src.data + srcIdx, count);
+}
+
+arrayClear :: inline (array: [] $T) {
+    assert(array.data != null);
+    memorySet(array.data, 0, array.count);
 }
 
 qsort :: inline (array: [] $T, compareFn: (T, T) -> s64) {

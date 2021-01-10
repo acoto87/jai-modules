@@ -1,4 +1,6 @@
 strlen :: (str: *u8) -> s64 {
+    assert(str != null);
+
     len := 0;
     while (<<str != 0) {
         len += 1;
@@ -8,6 +10,9 @@ strlen :: (str: *u8) -> s64 {
 }
 
 strcmp :: (a: *u8, b: *u8) -> s32 #must {
+    assert(a != null);
+    assert(b != null);
+
     lena := strlen(a);
     lenb := strlen(b);
 
@@ -18,6 +23,18 @@ strcmp :: (a: *u8, b: *u8) -> s32 #must {
     if lena > lenb return 1;
     if lena < lenb return -1;
     return 0;
+}
+
+strcpy :: (dst: *u8, src: *u8) {
+    assert(dst != null);
+    assert(src != null);
+
+    while (<<src) {
+        <<dst = <<src;
+        src += 1;
+        dst += 1;
+    }
+    <<dst = 0;
 }
 
 toString :: (cString: *u8) -> string {

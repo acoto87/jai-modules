@@ -258,7 +258,6 @@ nvg__createGL :: (flags: NVGcreateFlags) -> *NVGcontext {
     }
 
     params: NVGparams;
-    clear(*params);
     params.renderCreate = glnvg__renderCreate;
     params.renderCreateTexture = glnvg__renderCreateTexture;
     params.renderDeleteTexture = glnvg__renderDeleteTexture;
@@ -391,7 +390,7 @@ glnvg__allocTexture :: (gl: *GLNVGcontext) -> *GLNVGtexture {
         gl.ntextures += 1;
     }
 
-    clear(tex);
+    memoryClear(tex);
 
     gl.textureId += 1;
 
@@ -413,7 +412,7 @@ glnvg__deleteTexture :: (gl: *GLNVGcontext, id: s32) -> bool {
             if (gl.textures[i].tex != 0 && (gl.textures[i].flags & .NVG_IMAGE_NODELETE) == 0) {
                 glDeleteTextures(1, *gl.textures[i].tex);
             }
-            clear(*gl.textures[i]);
+            memoryClear(*gl.textures[i]);
             return true;
         }
     }
@@ -467,7 +466,7 @@ glnvg__createShader :: (shader: *GLNVGshader, name: string, header: string, opts
     source[0] = toCString(header);
     source[1] = toCString(opts);
 
-    clear(shader);
+    memoryClear(shader);
 
     prog := gl.glCreateProgram();
     vert := glCreateShader(GL_VERTEX_SHADER);
@@ -957,13 +956,12 @@ glnvg__convertPaint :: (gl: *GLNVGcontext, frag: *GLNVGfragUniforms, paint: *NVG
     tex: *GLNVGtexture = null;
     invxform: [6] f32;
 
-    clear(frag);
+    memoryClear(frag);
 
     frag.innerCol = glnvg__premulColor(paint.innerColor);
     frag.outerCol = glnvg__premulColor(paint.outerColor);
 
     if (scissor.extent[0] < -0.5 || scissor.extent[1] < -0.5) {
-        clear(frag.scissorMat);
         frag.scissorExt[0] = 1.0;
         frag.scissorExt[1] = 1.0;
         frag.scissorScale[0] = 1.0;
@@ -977,7 +975,7 @@ glnvg__convertPaint :: (gl: *GLNVGcontext, frag: *GLNVGfragUniforms, paint: *NVG
         frag.scissorScale[1] = sqrtf(scissor.xform[1] * scissor.xform[1] + scissor.xform[3] * scissor.xform[3]) / fringe;
     }
 
-    copy(paint.extent, frag.extent, 2);
+    arrayCopy(paint.extent, frag.extent, 2);
 
     frag.strokeMult = (width * 0.5 + fringe * 0.5) / fringe;
     frag.strokeThr = strokeThr;
@@ -1327,7 +1325,7 @@ glnvg__allocCall :: (gl: *GLNVGcontext) -> *GLNVGcall {
         gl.ccalls = ccalls;
     }
     ret = *gl.calls[gl.ncalls];
-    clear(ret);
+    memoryClear(ret);
     gl.ncalls += 1;
     return ret;
 }
@@ -1428,7 +1426,7 @@ glnvg__renderFill :: (uptr: *void, paint: *NVGpaint, compositeOperation: NVGcomp
 
     for i : 0..npaths-1 {
         copy := *gl.paths[call.pathOffset + i];
-        clear(copy);
+        memoryClear(copy);
 
         path := *paths[i];
         if (path.nfill > 0) {
@@ -1466,7 +1464,7 @@ glnvg__renderFill :: (uptr: *void, paint: *NVGpaint, compositeOperation: NVGcomp
         }
         // Simple shader for stencil
         frag := nvg__fragUniformPtr(gl, call.uniformOffset);
-        clear(frag);
+        memoryClear(frag);
         frag.strokeThr = -1.0;
 
         #if NANOVG_GL_USE_UNIFORMBUFFER {
@@ -1528,7 +1526,7 @@ glnvg__renderStroke :: (uptr: *void, paint: *NVGpaint, compositeOperation: NVGco
     for i : 0..npaths-1 {
         copy := *gl.paths[call.pathOffset + i];
         path := *paths[i];
-        clear(copy);
+        memoryClear(copy);
         if (path.nstroke) {
             copy.strokeOffset = offset;
             copy.strokeCount = path.nstroke;

@@ -43,6 +43,11 @@ memoryCompare :: inline (a: *$T, b: *T, count: s64 = 1) -> s16 {
     return memcmp(a, b, count * size_of(T));
 }
 
+memoryClear :: inline (value: *$T) {
+    assert(value != null);
+    memorySet(value, 0);
+}
+
 alloc :: inline ($T: Type, count: s64 = 1, allocator: Allocator = null, $initialized: bool = true) -> *T {
     assert(count > 0);
     result := cast(*T) _alloc(count * size_of(T), allocator);
@@ -99,6 +104,29 @@ free :: inline (p: *$T, allocator: Allocator = null) {
 }
 
 tempAllocator :: __temporary_allocator;
+
+memoryRead :: ($type: Type, ptr: *void, index: s64, littleEndian: bool = true) -> type {
+    size :: #run size_of(type);
+
+    bytes := cast(*u8) ptr;
+    start := bytes + index;
+
+    result: type = 0;
+
+    if (!littleEndian) {
+        for i : 0..size-1 {
+            result |= (cast(type) (<<start)) << (8 * (size - i - 1));
+            start += 1;
+        }
+    } else {
+        for i : 0..size-1 {
+            result |= (cast(type) (<<start)) << (8 * i);
+            start += 1;
+        }
+    }
+
+    return result;
+}
 
 #scope_file
 

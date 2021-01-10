@@ -691,7 +691,7 @@ fonsTextIterInit :: (stash: *FONScontext, iter: *FONStextIter, x: f32, y: f32, s
     state := fons__getState(stash);
     if (state.font < 0 || state.font >= stash.nfonts) return false;
 
-    clear(iter);
+    memoryClear(iter);
     iter.font = stash.fonts[state.font];
     if (iter.font.data == null) return false;
     iter.isize = cast(s16) (state.size * 10.0);
