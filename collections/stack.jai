@@ -37,7 +37,11 @@ StackOptions :: struct(TItem: Type) {
     equalsFn: (TItem, TItem) -> bool;
 }
 
-init :: (stack: *$T/Stack, options: StackOptions) {
+init :: (stack: *$T/Stack) {
+    init(stack, StackOptions(T.TItem).{});
+}
+
+init :: (stack: *$T/Stack, options: StackOptions(T.TItem)) {
     assert(options.capacity > 0);
 
     stack.count = 0;
@@ -75,7 +79,7 @@ clear :: (stack: *$T/Stack) {
             DONE;
         }
 
-        return null;
+        return "";
     }();
 
     stack.count = 0;
@@ -132,9 +136,11 @@ contains :: (stack: *$T/Stack, item: T.TItem) -> bool {
     return indexOf(stack, item) >= 0;
 }
 
-for_expansion :: (stack: *$T/Stack, body: Code, $pointer: bool, reverse: bool) #expand {
-    for <=reverse i : 0..stack.count-1 {
-        #if pointer {
+for_expansion :: (stack: *$T/Stack, body: Code, flags: For_Flags) #expand {
+    #assert(!(flags & .REVERSE));
+
+    for i : 0..stack.count-1 {
+        #if flags & .POINTER {
             `it := *stack.items[i];
         } else {
             `it := stack.items[i];

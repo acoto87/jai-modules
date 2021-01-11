@@ -76,7 +76,7 @@ clear :: (heap: *$T/BinaryHeap) {
             DONE;
         }
 
-        return null;
+        return "";
     }();
 
     heap.count = 0;

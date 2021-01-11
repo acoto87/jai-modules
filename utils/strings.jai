@@ -25,6 +25,24 @@ strcmp :: (a: *u8, b: *u8) -> s32 #must {
     return 0;
 }
 
+strncmp :: (a: *u8, b: *u8, count: s64) -> s32 #must {
+    assert(a != null);
+    assert(b != null);
+
+    lena := strlen(a);
+    lenb := strlen(b);
+
+    count = min(count, lena);
+    count = min(count, lenb);
+
+    for i : 0..count-1 {
+        if a[i] > b[i] return 1;
+        if a[i] < b[i] return -1;
+    }
+
+    return 0;
+}
+
 strcpy :: (dst: *u8, src: *u8) {
     assert(dst != null);
     assert(src != null);

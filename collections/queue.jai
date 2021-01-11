@@ -39,7 +39,11 @@ QueueOptions :: struct(TItem: Type) {
     equalsFn: (TItem, TItem) -> bool;
 }
 
-init :: (queue: *$T/Queue, options: QueueOptions) {
+init :: (queue: *$T/Queue) {
+    init(queue, QueueOptions(T.TItem).{});
+}
+
+init :: (queue: *$T/Queue, options: QueueOptions(T.TItem)) {
     assert(options.capacity > 0);
 
     queue.head = 0;
@@ -79,7 +83,7 @@ clear :: (queue: *$T/Queue) {
             DONE;
         }
 
-        return null;
+        return "";
     }();
 
     queue.count = 0;
@@ -138,9 +142,11 @@ contains :: (queue: *$T/Queue, item: T.TItem) -> bool {
     return indexOf(queue, item) >= 0;
 }
 
-for_expansion :: (queue: *$T/Queue, body: Code, $pointer: bool, reverse: bool) #expand {
-    for <=reverse i : 0..queue.count-1 {
-        #if pointer {
+for_expansion :: (queue: *$T/Queue, body: Code, flags: For_Flags) #expand {
+    #assert(!(flags & .REVERSE));
+
+    for i : 0..queue.count-1 {
+        #if flags & .POINTER {
             `it := *queue.items[(queue.head + i) % queue.capacity];
         } else {
             `it := queue.items[(queue.head + i) % queue.capacity];

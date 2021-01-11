@@ -37,6 +37,10 @@ ListOptions :: struct(TItem: Type) {
     equalsFn: (TItem, TItem) -> bool;
 }
 
+init :: inline (list: *$T/List) {
+    init(list, ListOptions(T.TItem).{});
+}
+
 init :: (list: *$T/List, options: ListOptions(T.TItem)) {
     assert(options.capacity > 0);
 
@@ -75,7 +79,7 @@ clear :: (list: *$T/List) {
             DONE;
         }
 
-        return null;
+        return "";
     }();
 
     list.count = 0;
@@ -194,7 +198,7 @@ removeAtRange :: (list: *$T/List, index: s64, count: s64) {
             DONE;
         }
 
-        return null;
+        return "";
     }();
 
     memoryMove(list.items + index, list.items + index + count, list.count - index - count);
@@ -255,9 +259,11 @@ toArray :: (list: *$T/List) -> [] T.TItem {
     return array;
 }
 
-for_expansion :: (list: *$T/List, body: Code, $pointer: bool, reverse: bool) #expand {
-    for <=reverse i : 0..list.count-1 {
-        #if pointer {
+for_expansion :: (list: *$T/List, body: Code, flags: For_Flags) #expand {
+    #assert(!(flags & .REVERSE));
+
+    for i : 0..list.count-1 {
+        #if flags & .POINTER {
             `it := *list.items[i];
         } else {
             `it := list.items[i];

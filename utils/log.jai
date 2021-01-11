@@ -11,23 +11,23 @@ initLog :: (severity: LogSeverity) {
 }
 
 logDebug :: inline (formatString: string, args: .. Any, loc := #caller_location) {
-    _logInternal(LogSeverity.Debug, loc.fully_pathed_filename, loc.line_number, formatString, args);
+    _logInternal(LogSeverity.Debug, loc.fully_pathed_filename, loc.line_number, formatString, ..args);
 }
 
 logInfo :: inline (formatString: string, args: .. Any, loc := #caller_location) {
-    _logInternal(LogSeverity.Info, loc.fully_pathed_filename, loc.line_number, formatString, args);
+    _logInternal(LogSeverity.Info, loc.fully_pathed_filename, loc.line_number, formatString, ..args);
 }
 
 logWarning :: inline (formatString: string, args: .. Any, loc := #caller_location) {
-    _logInternal(LogSeverity.Warning, loc.fully_pathed_filename, loc.line_number, formatString, args);
+    _logInternal(LogSeverity.Warning, loc.fully_pathed_filename, loc.line_number, formatString, ..args);
 }
 
 logError :: inline (formatString: string, args: .. Any, loc := #caller_location) {
-    _logInternal(LogSeverity.Error, loc.fully_pathed_filename, loc.line_number, formatString, args);
+    _logInternal(LogSeverity.Error, loc.fully_pathed_filename, loc.line_number, formatString, ..args);
 }
 
 logCritical :: inline (formatString: string, args: .. Any, loc := #caller_location) {
-    _logInternal(LogSeverity.Critical, loc.fully_pathed_filename, loc.line_number, formatString, args);
+    _logInternal(LogSeverity.Critical, loc.fully_pathed_filename, loc.line_number, formatString, ..args);
 }
 
 #scope_file
@@ -59,8 +59,8 @@ _logInternal :: (severity: LogSeverity, file: string, line: s64, formatString: s
     defer freeBuffers(*builder);
 
     printToBuilder(*builder, "[%:%:%]", timeInfo.hour, timeInfo.min, timeInfo.sec);
-    printToBuilder(*builder, "[%:(%)]", fileName, line);
-    printToBuilder(*builder, " %", formatString, args);
+    printToBuilder(*builder, "[%:(%)] ", fileName, line);
+    printToBuilder(*builder, formatString, ..args);
 
     message := builderToString(*builder);
     context.logger(message, severityStr, Log_Mode.EVERYDAY, context.logger_data);

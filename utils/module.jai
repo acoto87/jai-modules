@@ -26,6 +26,7 @@ f64 :: float64;
 
 #load "math.jai";
 #load "memory.jai";
+#load "memory_buffer.jai";
 #load "arrays.jai";
 #load "strings.jai";
 #load "random.jai";

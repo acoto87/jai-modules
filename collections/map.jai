@@ -105,7 +105,7 @@ clear :: (map: *$T/HashMap) {
             DONE;
         }
 
-        return null;
+        return "";
     }();
 
     map.count = 0;
@@ -171,18 +171,20 @@ removeKey :: (map: *$T/HashMap, key: T.TKey) {
                 DONE;
             }
 
-            return null;
+            return "";
         }();
 
         map.count -= 1;
     }
 }
 
-for_expansion :: (map: *$T/HashMap, body: Code, $pointer: bool, reverse: bool) #expand {
+for_expansion :: (map: *$T/HashMap, body: Code, flags: For_Flags) #expand {
+    #assert(!(flags & .REVERSE));
+
     for i : 0..map.capacity - 1 {
         entry := *map.entries[i];
         if (entry.active) {
-            #if pointer {
+            #if flags & .POINTER {
                 `it := HashMapPair.{
                     key = entry.key,
                     value = *entry.value
@@ -243,7 +245,7 @@ insert :: (map: *$T/HashMap, key: T.TKey, value: T.TValue) {
                 DONE;
             }
 
-            return null;
+            return "";
         }();
 
         return;
