@@ -128,7 +128,7 @@ get :: (map: *$T/HashMap, key: T.TKey) -> bool, T.TValue {
     return false, map.defaultValue;
 }
 
-getRef :: (map: *$T/HashMap, key: T.TKey) -> bool, *T.TValue {
+ref :: (map: *$T/HashMap, key: T.TKey) -> bool, *T.TValue {
     assert(map.entries != null);
 
     found, entry := getEntry(map, key);
