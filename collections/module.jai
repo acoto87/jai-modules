@@ -28,6 +28,7 @@ LOAD_TESTS :: false;
 #load "stack.jai";
 #load "queue.jai";
 #load "binary_heap.jai";
+#load "stable_list.jai";
 
 #if LOAD_TESTS {
     #load "tests/list_test.jai";

@@ -34,7 +34,13 @@ BinaryHeapOptions :: struct(TItem: Type) {
     capacity: s64 = 8;
     freeItems: bool;
     allocator: Allocator;
-    compareFn: (TItem, TItem) -> s64;
+    compareFn: (a: TItem, b: TItem) -> s64;
+}
+
+init :: (heap: *$T/BinaryHeap) {
+    init(heap, BinaryHeapOptions(T.TItem).{
+        compareFn = (a: TItem, b: TItem) -> s64 { return a - b; }
+    });
 }
 
 init :: (heap: *$T/BinaryHeap, options: BinaryHeapOptions(T.TItem)) {
