@@ -107,7 +107,7 @@ clear :: (list: *$T/StableList) {
     list.count = 0;
 }
 
-add :: (list: *$T/StableList, item: T.TItem) {
+add :: (list: *$T/StableList, item: T.TItem) -> s64 {
     assert(list.items != null);
 
     if (list.freeStart < 0) {
@@ -125,6 +125,7 @@ add :: (list: *$T/StableList, item: T.TItem) {
     list.items[oldFreeStart] = item;
     list.free[oldFreeStart] = -1;
     list.count += 1;
+    return oldFreeStart;
 }
 
 addRange :: inline (list: *$T/StableList, items: ..T.TItem) {
