@@ -128,6 +128,38 @@ add :: (list: *$T/StableList, item: T.TItem) -> s64 {
     return oldFreeStart;
 }
 
+addNew :: (list: *$T/StableList) -> s64, *T.TItem {
+    assert(list.items != null);
+
+    if (list.freeStart < 0) {
+        resize(list, list.count + 1);
+    }
+
+    oldFreeStart := list.freeStart;
+    if (list.count + 1 < list.capacity) {
+        list.freeStart = list.free[list.freeStart];
+        list.free[list.freeEnd] = list.freeStart;
+    } else {
+        list.freeStart = -1;
+        list.freeEnd = -1;
+    }
+
+    #insert #run () -> Code {
+        info := type_info(T.TItem);
+
+        if (info.type == Type_Info_Tag.POINTER) {
+            return #code item := alloc(T.TItem);;
+        } else {
+            return #code item: T.TItem;;
+        }
+    }();
+
+    list.items[oldFreeStart] = item;
+    list.free[oldFreeStart] = -1;
+    list.count += 1;
+    return oldFreeStart, *list.items[oldFreeStart];
+}
+
 addRange :: inline (list: *$T/StableList, items: ..T.TItem) {
     for item : items {
         add(list, item);

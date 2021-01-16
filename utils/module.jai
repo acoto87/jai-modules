@@ -31,6 +31,7 @@ f64 :: float64;
 #load "strings.jai";
 #load "random.jai";
 #load "log.jai";
+#load "enums.jai";
 
 measure :: (message: string, code: Code, prev: Code = null, post: Code = null) #expand {
     print("--- Start % ---\n", message);

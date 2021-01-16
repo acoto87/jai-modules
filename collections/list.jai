@@ -89,6 +89,10 @@ add :: inline (list: *$T/List, item: T.TItem) {
     insert(list, list.count, item);
 }
 
+addNew :: (list: *$T/List) -> *T.TItem {
+    return insertNew(list, list.count);
+}
+
 addRange :: inline (list: *$T/List, items: ..T.TItem) {
     insertRange(list, list.count, ..items);
 }
@@ -111,6 +115,38 @@ insert :: (list: *$T/List, index: s64, item: T.TItem) {
 
     list.items[index] = item;
     list.count = newCount;
+}
+
+insertNew :: (list: *$T/List, index: s64) -> *T.TItem {
+    assert(list.items != null);
+    assert(index >= 0 && index <= list.count);
+
+    newCount := list.count + 1;
+
+    if (newCount > list.capacity) {
+        resize(list, newCount);
+    }
+
+    i := newCount - 1;
+    while (i > index) {
+        list.items[i] = list.items[i - 1];
+        i -= 1;
+    }
+
+    #insert #run () -> Code {
+        info := type_info(T.TItem);
+
+        if (info.type == Type_Info_Tag.POINTER) {
+            return #code item := alloc(T.TItem);;
+        } else {
+            return #code item: T.TItem;;
+        }
+    }();
+
+    list.items[index] = item;
+    list.count = newCount;
+
+    return *list.items[index];
 }
 
 insertRange :: (list: *$T/List, index: s64, items: ..T.TItem) {
