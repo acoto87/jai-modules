@@ -2098,6 +2098,14 @@ nvgInternalParams :: (ctx: *NVGcontext) -> *NVGparams {
 // Debug function to dump cached path data.
 nvgDebugDumpPathCache :: (ctx: *NVGcontext) {}
 
+nvgGetState :: inline (ctx: *NVGcontext) -> *NVGstate {
+    return nvg__getState(ctx);
+}
+
+nvgVset :: inline (vtx: *NVGvertex, x: f32, y: f32, u: f32, v: f32) {
+    nvg__vset(vtx, x, y, u, v);
+}
+
 #scope_file
 
 #import "utils";
@@ -2366,7 +2374,6 @@ nvg__polyReverse :: (pts: *NVGpoint, npts: s32) {
         j -= 1;
     }
 }
-
 
 nvg__vset :: (vtx: *NVGvertex, x: f32, y: f32, u: f32, v: f32) {
     vtx.x = x;

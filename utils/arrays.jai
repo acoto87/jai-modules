@@ -22,6 +22,57 @@ arrayClear :: inline (array: [] $T) {
     memorySet(array.data, 0, array.count);
 }
 
+array :: inline ($type: Type, v0: type) -> [] type {
+    arr: [] type;
+    arr[0] = v0;
+    return arr;
+}
+
+array :: inline ($type: Type, v0: type, v1: type) -> [] type {
+    arr: [] type;
+    arr[0] = v0;
+    arr[1] = v1;
+    return arr;
+}
+
+array :: inline ($type: Type, v0: type, v1: type, v2: type) -> [] type {
+    arr: [] type;
+    arr[0] = v0;
+    arr[1] = v1;
+    arr[2] = v2;
+    return arr;
+}
+
+array :: inline ($type: Type, v0: type, v1: type, v2: type, v3: type) -> [] type {
+    arr: [] type;
+    arr[0] = v0;
+    arr[1] = v1;
+    arr[2] = v2;
+    arr[3] = v3;
+    return arr;
+}
+
+array :: inline ($type: Type, v0: type, v1: type, v2: type, v3: type, v4: type) -> [] type {
+    arr: [] type;
+    arr[0] = v0;
+    arr[1] = v1;
+    arr[2] = v2;
+    arr[3] = v3;
+    arr[4] = v4;
+    return arr;
+}
+
+array :: inline ($type: Type, v0: type, v1: type, v2: type, v3: type, v4: type, v5: type) -> [] type {
+    arr: [] type;
+    arr[0] = v0;
+    arr[1] = v1;
+    arr[2] = v2;
+    arr[3] = v3;
+    arr[4] = v4;
+    arr[5] = v5;
+    return arr;
+}
+
 qsort :: inline (array: [] $T, compareFn: (T, T) -> s64) {
     qsort(array, 0, array.count - 1, compareFn);
 }

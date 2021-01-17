@@ -47,9 +47,23 @@ for_expansion :: (iterator: *$T/EnumIterator, body: Code, flags: For_Flags) #exp
             }
         DONE;
 
+        enumTypeInfo := type_info(enumType);
+        enumTypeName := enumTypeInfo.name;
+
+        intTypeInfo := type_info(intType);
+        intTypeName := "s64";
+
+        if intTypeInfo == type_info(u8)   intTypeName = "u8";
+        if intTypeInfo == type_info(u16)  intTypeName = "u16";
+        if intTypeInfo == type_info(u32)  intTypeName = "u32";
+        if intTypeInfo == type_info(u64)  intTypeName = "u64";
+        if intTypeInfo == type_info(s8)   intTypeName = "s8";
+        if intTypeInfo == type_info(s16)  intTypeName = "s16";
+        if intTypeInfo == type_info(s32)  intTypeName = "s32";
+
         builder: StringBuilder;
         defer freeBuffers(*builder);
-        printToBuilder(*builder, codeStr, enumType, intType);
+        printToBuilder(*builder, codeStr, enumTypeName, intTypeName);
         return builderToString(*builder);
     }
 
