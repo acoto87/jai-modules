@@ -56,7 +56,7 @@ init :: (queue: *$T/Queue, options: QueueOptions(T.TItem)) {
     queue.items = alloc(T.TItem, queue.capacity, queue.allocator, initialized = false);
 }
 
-free :: (queue: *$T/Queue, freeList: bool = false) {
+uninit :: (queue: *$T/Queue, freeList: bool = false) {
     if (queue.items) {
         clear(queue);
         free(queue.items, queue.allocator);

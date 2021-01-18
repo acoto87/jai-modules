@@ -72,14 +72,14 @@ init :: (map: *$T/HashMap, options: HashMapOptions) {
     map.entries = alloc(HashMapEntry(T.TKey, T.TValue), count = map.capacity, allocator = map.allocator);
 }
 
-free :: (map: *$T/HashMap, freeMap: bool = false) {
+uninit :: (map: *$T/HashMap, freeMap: bool = false) {
     if (map.entries) {
         clear(map);
         free(map.entries, map.allocator);
     }
 
     if (freeMap) {
-        free(map, list.allocator);
+        free(map, map.allocator);
     }
 }
 

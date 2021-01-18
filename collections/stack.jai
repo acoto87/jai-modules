@@ -52,7 +52,7 @@ init :: (stack: *$T/Stack, options: StackOptions(T.TItem)) {
     stack.items = alloc(T.TItem, stack.capacity, stack.allocator, initialized = false);
 }
 
-free :: (stack: *$T/Stack, freeList: bool = false) {
+uninit :: (stack: *$T/Stack, freeList: bool = false) {
     if (stack.items) {
         clear(stack);
         free(stack.items, stack.allocator);

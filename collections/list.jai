@@ -52,7 +52,7 @@ init :: (list: *$T/List, options: ListOptions(T.TItem)) {
     list.items = alloc(T.TItem, list.capacity, list.allocator, initialized = false);
 }
 
-free :: (list: *$T/List, freeList: bool = false) {
+uninit :: (list: *$T/List, freeList: bool = false) {
     if (list.items) {
         clear(list);
         free(list.items, list.allocator);
@@ -89,7 +89,7 @@ add :: inline (list: *$T/List, item: T.TItem) {
     insert(list, list.count, item);
 }
 
-addNew :: (list: *$T/List) -> *T.TItem {
+addNew :: inline (list: *$T/List) -> *T.TItem {
     return insertNew(list, list.count);
 }
 

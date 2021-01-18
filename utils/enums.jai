@@ -1,16 +1,20 @@
 getCount :: inline ($enumType: Type) -> s64 {
-    ti := type_info(WarFeatureType);
+    ti := type_info(enumType);
     return ti.values.count;
 }
 
 getInternalType :: ($enumType: Type) -> Type {
     ti := type_info(enumType);
-    if ti.runtime_size == {
-        case 1; return ifx ti.internal_type.signed then s8 else u8;
-        case 2; return ifx ti.internal_type.signed then s16 else u16;
-        case 4; return ifx ti.internal_type.signed then s32 else u32;
-        case 8; return ifx ti.internal_type.signed then s64 else u64;
-        case; return s64;
+    if (ti == type_info(s8)) return s8;
+    else if (ti == type_info(s8)) return u8;
+    else if (ti == type_info(s16)) return s16;
+    else if (ti == type_info(s16)) return u16;
+    else if (ti == type_info(s32)) return s32;
+    else if (ti == type_info(s32)) return u32;
+    else if (ti == type_info(s64)) return s64;
+    else if (ti == type_info(s64)) return u64;
+    else {
+        assert(false, "Enum type should be of integer type;");
     }
 }
 
@@ -31,42 +35,15 @@ for_expansion :: (iterator: *$T/EnumIterator, body: Code, flags: For_Flags) #exp
     #assert(!(flags & .REVERSE));
     #assert(!(flags & .POINTER));
 
-    getIterationCode :: ($enumType: Type, $intType: Type) -> string {
-        codeStr := #string DONE
-            ti := type_info(%1);
-            count := ti.values.count;
-            for i : 0..count-1 {
-                entry: EnumEntry(%2);
-                entry.name = ti.names[i];
-                entry.value = cast(%2) ti.values[i];
+    ti := type_info(T.enumType);
+    for i : 0..ti.values.count-1 {
+        entry: EnumEntry(T.enumType);
+        entry.name = ti.names[i];
+        entry.value = cast(T.enumType) ti.values[i];
 
-                `it := entry;
-                `it_index := i;
+        `it := entry;
+        `it_index := i;
 
-                #insert body;
-            }
-        DONE;
-
-        enumTypeInfo := type_info(enumType);
-        enumTypeName := enumTypeInfo.name;
-
-        intTypeInfo := type_info(intType);
-        intTypeName := "s64";
-
-        if intTypeInfo == type_info(u8)   intTypeName = "u8";
-        if intTypeInfo == type_info(u16)  intTypeName = "u16";
-        if intTypeInfo == type_info(u32)  intTypeName = "u32";
-        if intTypeInfo == type_info(u64)  intTypeName = "u64";
-        if intTypeInfo == type_info(s8)   intTypeName = "s8";
-        if intTypeInfo == type_info(s16)  intTypeName = "s16";
-        if intTypeInfo == type_info(s32)  intTypeName = "s32";
-
-        builder: StringBuilder;
-        defer freeBuffers(*builder);
-        printToBuilder(*builder, codeStr, enumTypeName, intTypeName);
-        return builderToString(*builder);
+        #insert body;
     }
-
-    internalType :: #run getInternalType(T.enumType);
-    #insert #run getIterationCode(T.enumType, internalType);
 }

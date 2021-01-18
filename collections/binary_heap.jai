@@ -54,7 +54,7 @@ init :: (heap: *$T/BinaryHeap, options: BinaryHeapOptions(T.TItem)) {
     heap.items = alloc(T.TItem, heap.capacity, heap.allocator, initialized = false);
 }
 
-free :: (heap: *$T/BinaryHeap, freePointer: bool = false) {
+uninit :: (heap: *$T/BinaryHeap, freePointer: bool = false) {
     if (heap.items) {
         clear(heap);
         free(heap.items, heap.allocator);

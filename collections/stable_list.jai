@@ -65,7 +65,7 @@ init :: (list: *$T/StableList, options: StableListOptions(T.TItem)) {
     list.freeEnd = list.capacity-1;
 }
 
-free :: (list: *$T/StableList, freeList: bool = false) {
+uninit :: (list: *$T/StableList, freeList: bool = false) {
     if (list.items) {
         clear(list);
         free(list.items, list.allocator);

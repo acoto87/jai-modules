@@ -121,7 +121,7 @@ valueTypeTest :: (count: u32 = 100000) {
         }
     });
 
-    free(*list);
+    uninit(*list);
 
     print("--- End value type tests ---\n");
 }
@@ -273,7 +273,7 @@ referenceTypeTest :: (count: u32 = 100000) {
         }
     });
 
-    free(*list);
+    uninit(*list);
 
     print("--- End reference type tests ---\n");
 }
