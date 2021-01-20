@@ -16,7 +16,7 @@ strcmp :: (a: *u8, b: *u8) -> s32 #must {
     lena := strlen(a);
     lenb := strlen(b);
 
-    for i : 0..min(lena, lenb)-1 {
+    for i : range(0, min(lena, lenb)) {
         if a[i] > b[i] return 1;
         if a[i] < b[i] return -1;
     }
@@ -35,7 +35,7 @@ strncmp :: (a: *u8, b: *u8, count: s64) -> s32 #must {
     count = min(count, lena);
     count = min(count, lenb);
 
-    for i : 0..count-1 {
+    for i : range(0, count) {
         if a[i] > b[i] return 1;
         if a[i] < b[i] return -1;
     }

@@ -57,7 +57,7 @@ alloc :: inline ($T: Type, count: s64 = 1, allocator: Allocator = null, $initial
 
         #if ini {
             item := result;
-            for 0..count-1 {
+            for range(0, count) {
                 inline ini(item);
                 item += size_of(T);
             }
@@ -85,7 +85,9 @@ allocArray :: ($T: Type, length: s64, allocator: Allocator = null, $initialized:
 }
 
 freeArray :: inline (array: [] $T, allocator: Allocator = null) {
-    _free(array.data, allocator);
+    if (array.data != null) {
+        _free(cast(*void) array.data, allocator);
+    }
 }
 
 reallocArray :: inline (array: *[] $T, newLength: s64, oldLength: s64, allocator: Allocator = null) {
@@ -94,13 +96,15 @@ reallocArray :: inline (array: *[] $T, newLength: s64, oldLength: s64, allocator
 }
 
 free :: inline (s: string, allocator: Allocator = null) {
-    assert(s.data != null);
-    _free(s.data, allocator);
+    if (s.data != null) {
+        _free(cast(*void) s.data, allocator);
+    }
 }
 
-free :: inline (p: *$T, allocator: Allocator = null) {
-    assert(p != null);
-    _free(cast(*void) p);
+free :: inline (ptr: *$T, allocator: Allocator = null) {
+    if (ptr != null) {
+        _free(cast(*void) ptr);
+    }
 }
 
 tempAllocator :: __temporary_allocator;
@@ -114,12 +118,12 @@ memoryRead :: ($type: Type, ptr: *void, index: s64, littleEndian: bool = true) -
     result: type = 0;
 
     if (!littleEndian) {
-        for i : 0..size-1 {
+        for i : range(0, size) {
             result |= (cast(type) (<<start)) << (8 * (size - i - 1));
             start += 1;
         }
     } else {
-        for i : 0..size-1 {
+        for i : range(0, size) {
             result |= (cast(type) (<<start)) << (8 * i);
             start += 1;
         }

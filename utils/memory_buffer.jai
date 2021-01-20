@@ -160,7 +160,7 @@ mbReadString :: (buffer: *MemoryBuffer, str: *string, options: StringStoreOption
                 return false;
             }
             data := alloc(u8, str.count, buffer.allocator);
-            for i : 0..count-1 {
+            for i : range(0, count) {
                 byte: u8;
                 if (!mbRead(buffer, *byte)) {
                     return false;
@@ -276,7 +276,7 @@ mbReadIntLE :: ($intType: Type, buffer: *MemoryBuffer, value: *intType) -> bool 
 
     result: intType = 0;
 
-    for i : 0..intSize-1 {
+    for i : range(0, intSize) {
         byte: u8;
         if (!mbRead(buffer, *byte)) {
             return false;
@@ -293,7 +293,7 @@ mbReadIntBE :: ($intType: Type, buffer: *MemoryBuffer, value: *intType) -> bool 
 
     result: intType = 0;
 
-    for i : 0..intSize-1 {
+    for i : range(0, intSize) {
         byte: u8;
         if (!mbRead(buffer, *byte)) {
             return false;

@@ -5,6 +5,14 @@ Range :: struct(type: Type) {
     toInclusive: bool;
 }
 
+range :: (from: s64, to: s64, toInclusive: bool = false) -> Range(s64) {
+    return range(s64, from, to, toInclusive);
+}
+
+range :: (from: s64, to: s64, step: s64, toInclusive: bool = false) -> Range(s64) {
+    return range(s64, from, to, step, toInclusive);
+}
+
 range :: ($type: Type, from: s64, to: s64, toInclusive: bool = false) -> Range(type) {
     step := ifx from <= to then 1 else -1;
     return range(type, from, to, step, toInclusive);

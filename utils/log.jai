@@ -68,7 +68,7 @@ _logInternal :: (severity: LogSeverity, file: string, line: s64, formatString: s
 
 _getFileName :: (filePath: string) -> string {
     index := 0;
-    for i : 0..filePath.count-1 {
+    for i : range(0, filePath.count) {
         if (filePath[i] == #char "/" || filePath[i] == #char "\\") {
             index = i;
         }
