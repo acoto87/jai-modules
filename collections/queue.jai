@@ -121,25 +121,36 @@ peek :: (queue: *$T/Queue) -> T.TItem {
 indexOf :: (queue: *$T/Queue, item: T.TItem) -> s64 {
     assert(queue.items != null);
 
-    if (queue.equalsFn != null) {
-        for i : 0..queue.count-1 {
-            if (queue.equalsFn(queue.items[(queue.head + i) % queue.capacity], item)) {
-                return i;
-            }
-        }
-    } else {
-        for i : 0..queue.count-1 {
-            if (queue.items[(queue.head + i) % queue.capacity] == item) {
-                return i;
-            }
+    for i : 0..queue.count-1 {
+        if (queue.items[(queue.head + i) % queue.capacity] == item) {
+            return i;
         }
     }
 
     return -1;
 }
 
+
+indexOf :: (queue: *$T/Queue, item: T.TItem, equalsFn: (T.TItem, T.TItem) -> bool) -> s64 {
+    assert(queue.items != null);
+    assert(equalsFn != null);
+
+    for i : 0..queue.count-1 {
+        if (equalsFn(queue.items[(queue.head + i) % queue.capacity], item)) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+
 contains :: (queue: *$T/Queue, item: T.TItem) -> bool {
     return indexOf(queue, item) >= 0;
+}
+
+contains :: (queue: *$T/Queue, item: T.TItem, equalsFn: (T.TItem, T.TItem) -> bool) -> bool {
+    return indexOf(queue, item, equalsFn) >= 0;
 }
 
 for_expansion :: (queue: *$T/Queue, body: Code, flags: For_Flags) #expand {

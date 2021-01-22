@@ -25,6 +25,7 @@ LOAD_TESTS :: false;
 
 #load "list.jai";
 #load "map.jai";
+#load "set.jai";
 #load "stack.jai";
 #load "queue.jai";
 #load "binary_heap.jai";

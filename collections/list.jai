@@ -26,7 +26,6 @@ List :: struct(TItem: Type) {
     capacity: s64;
     freeItems: bool;
     allocator: Allocator;
-    equalsFn: (TItem, TItem) -> bool;
     items: *TItem;
 }
 
@@ -34,7 +33,6 @@ ListOptions :: struct(TItem: Type) {
     capacity: s64 = 8;
     freeItems: bool;
     allocator: Allocator;
-    equalsFn: (TItem, TItem) -> bool;
 }
 
 init :: inline (list: *$T/List) {
@@ -48,7 +46,6 @@ init :: (list: *$T/List, options: ListOptions(T.TItem)) {
     list.capacity = options.capacity;
     list.freeItems = options.freeItems;
     list.allocator = options.allocator;
-    list.equalsFn = options.equalsFn;
     list.items = alloc(T.TItem, list.capacity, list.allocator, initialized = false);
 }
 
@@ -172,17 +169,22 @@ insertRange :: (list: *$T/List, index: s64, items: ..T.TItem) {
 indexOf :: (list: *$T/List, item: T.TItem) -> s64 {
     assert(list.items != null);
 
-    if (list.equalsFn != null) {
-        for i : 0..list.count - 1 {
-            if (list.equalsFn(list.items[i], item)) {
-                return i;
-            }
+    for i : 0..list.count - 1 {
+        if (list.items[i] == item) {
+            return i;
         }
-    } else {
-        for i : 0..list.count - 1 {
-            if (list.items[i] == item) {
-                return i;
-            }
+    }
+
+    return -1;
+}
+
+indexOf :: (list: *$T/List, item: T.TItem, equalsFn: (T.TItem, T.TItem) -> bool) -> s64 {
+    assert(list.items != null);
+    assert(equalsFn != null);
+
+    for i : 0..list.count - 1 {
+        if (equalsFn(list.items[i], item)) {
+            return i;
         }
     }
 
@@ -193,8 +195,19 @@ contains :: inline (list: *$T/List, item: T.TItem) -> bool {
     return indexOf(list, item) >= 0;
 }
 
+contains :: inline (list: *$T/List, item: T.TItem, equalsFn: (T.TItem, T.TItem) -> bool) -> bool {
+    return indexOf(list, item, equalsFn) >= 0;
+}
+
 removeItem :: inline (list: *$T/List, item: T.TItem) {
     index := indexOf(list, item);
+    if (index >= 0 && index < list.count) {
+        removeAt(list, index);
+    }
+}
+
+removeItem :: inline (list: *$T/List, item: T.TItem, equalsFn: (T.TItem, T.TItem) -> bool) {
+    index := indexOf(list, item, equalsFn);
     if (index >= 0 && index < list.count) {
         removeAt(list, index);
     }

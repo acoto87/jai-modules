@@ -26,7 +26,6 @@ Stack :: struct(TItem: Type) {
     capacity: s64;
     allocator: Allocator;
     freeItems: bool;
-    equalsFn: (TItem, TItem) -> bool;
     items: *TItem;
 }
 
@@ -34,7 +33,6 @@ StackOptions :: struct(TItem: Type) {
     capacity: s64 = 8;
     freeItems: bool;
     allocator: Allocator;
-    equalsFn: (TItem, TItem) -> bool;
 }
 
 init :: (stack: *$T/Stack) {
@@ -48,7 +46,6 @@ init :: (stack: *$T/Stack, options: StackOptions(T.TItem)) {
     stack.capacity = options.capacity;
     stack.freeItems = options.freeItems;
     stack.allocator = options.allocator;
-    stack.equalsFn = options.equalsFn;
     stack.items = alloc(T.TItem, stack.capacity, stack.allocator, initialized = false);
 }
 
@@ -115,25 +112,34 @@ peek :: (stack: *$T/Stack) -> T.TItem {
 indexOf :: (stack: *$T/Stack, item: T.TItem) -> s64 {
     assert(stack.items != null);
 
-    if (stack.equalsFn != null) {
-        for i : 0..stack.count-1 {
-            if (stack.equalsFn(stack.items[i], item)) {
-                return i;
-            }
-        }
-    } else {
-        for i : 0..stack.count-1 {
-            if (stack.items[i] == item) {
-                return i;
-            }
+    for i : 0..stack.count-1 {
+        if (stack.items[i] == item) {
+            return i;
         }
     }
 
     return -1;
 }
 
-contains :: (stack: *$T/Stack, item: T.TItem) -> bool {
+indexOf :: (stack: *$T/Stack, item: T.TItem, equalsFn: (T.TItem, T.TItem) -> bool) -> s64 {
+    assert(stack.items != null);
+    assert(equalsFn != null);
+
+    for i : 0..stack.count-1 {
+        if (equalsFn(stack.items[i], item)) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+contains :: inline (stack: *$T/Stack, item: T.TItem) -> bool {
     return indexOf(stack, item) >= 0;
+}
+
+contains :: inline (stack: *$T/Stack, item: T.TItem, equalsFn: (T.TItem, T.TItem) -> bool) -> bool {
+    return indexOf(stack, item, equalsFn) >= 0;
 }
 
 for_expansion :: (stack: *$T/Stack, body: Code, flags: For_Flags) #expand {

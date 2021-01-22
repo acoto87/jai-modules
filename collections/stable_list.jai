@@ -29,7 +29,6 @@ StableList :: struct(TItem: Type) {
     capacity: s64;
     freeItems: bool;
     allocator: Allocator;
-    equalsFn: (TItem, TItem) -> bool;
     items: *TItem;
     freeStart: s64;
     freeEnd: s64;
@@ -40,7 +39,6 @@ StableListOptions :: struct(TItem: Type) {
     capacity: s64 = 8;
     freeItems: bool;
     allocator: Allocator;
-    equalsFn: (TItem, TItem) -> bool;
 }
 
 init :: inline (list: *$T/StableList) {
@@ -54,7 +52,6 @@ init :: (list: *$T/StableList, options: StableListOptions(T.TItem)) {
     list.capacity = options.capacity;
     list.freeItems = options.freeItems;
     list.allocator = options.allocator;
-    list.equalsFn = options.equalsFn;
     list.items = alloc(T.TItem, list.capacity, list.allocator, initialized = false);
     list.free = alloc(s64, list.capacity, list.allocator, initialized = false);
     for i : 0..list.capacity-2 {
@@ -169,19 +166,24 @@ addRange :: inline (list: *$T/StableList, items: ..T.TItem) {
 indexOf :: (list: *$T/StableList, item: T.TItem) -> s64 {
     assert(list.items != null);
 
-    if (list.equalsFn != null) {
-        for i : 0..list.capacity - 1 {
-            if (list.free[i] < 0 && list.equalsFn(list.items[i], item)) {
-                return i;
-            }
+    for i : 0..list.capacity - 1 {
+        a := list.items[i];
+        f := list.free[i];
+        if (list.free[i] < 0 && list.items[i] == item) {
+            return i;
         }
-    } else {
-        for i : 0..list.capacity - 1 {
-            a := list.items[i];
-            f := list.free[i];
-            if (list.free[i] < 0 && list.items[i] == item) {
-                return i;
-            }
+    }
+
+    return -1;
+}
+
+indexOf :: (list: *$T/StableList, item: T.TItem, equalsFn: (T.TItem, T.TItem) -> bool) -> s64 {
+    assert(list.items != null);
+    assert(equalsFn != null);
+
+    for i : 0..list.capacity - 1 {
+        if (list.free[i] < 0 && equalsFn(list.items[i], item)) {
+            return i;
         }
     }
 
@@ -192,8 +194,19 @@ contains :: inline (list: *$T/StableList, item: T.TItem) -> bool {
     return indexOf(list, item) >= 0;
 }
 
+contains :: inline (list: *$T/StableList, item: T.TItem, equalsFn: (T.TItem, T.TItem) -> bool) -> bool {
+    return indexOf(list, item, equalsFn) >= 0;
+}
+
 removeItem :: inline (list: *$T/StableList, item: T.TItem) {
     index := indexOf(list, item);
+    if (index >= 0 && index < list.capacity) {
+        removeAt(list, index);
+    }
+}
+
+removeItem :: inline (list: *$T/StableList, item: T.TItem, equalsFn: (T.TItem, T.TItem) -> bool) {
+    index := indexOf(list, item, equalsFn);
     if (index >= 0 && index < list.capacity) {
         removeAt(list, index);
     }
