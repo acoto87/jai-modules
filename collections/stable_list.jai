@@ -41,6 +41,18 @@ StableListOptions :: struct(TItem: Type) {
     allocator: Allocator;
 }
 
+createStableList :: ($T: Type) -> StableList(T) {
+    list: StableList(T);
+    init(*list);
+    return list;
+}
+
+createStableList :: ($T: Type, options: StableListOptions(T)) -> StableList(T) {
+    list: StableList(T);
+    init(*list, options);
+    return list;
+}
+
 init :: inline (list: *$T/StableList) {
     init(list, StableListOptions(T.TItem).{});
 }

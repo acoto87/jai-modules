@@ -37,6 +37,18 @@ BinaryHeapOptions :: struct(TItem: Type) {
     compareFn: (a: TItem, b: TItem) -> s64;
 }
 
+createBinaryHeap :: ($T: Type) -> BinaryHeap(T) {
+    heap: BinaryHeap(T);
+    init(*heap);
+    return heap;
+}
+
+createBinaryHeap :: ($T: Type, options: BinaryHeapOptions(T)) -> BinaryHeap(T) {
+    heap: BinaryHeap(T);
+    init(*heap, options);
+    return heap;
+}
+
 init :: (heap: *$T/BinaryHeap) {
     init(heap, BinaryHeapOptions(T.TItem).{
         compareFn = (a: TItem, b: TItem) -> s64 { return a - b; }

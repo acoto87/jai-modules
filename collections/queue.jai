@@ -39,6 +39,18 @@ QueueOptions :: struct(TItem: Type) {
     equalsFn: (TItem, TItem) -> bool;
 }
 
+createQueue :: ($T: Type) -> Queue(T) {
+    queue: Queue(T);
+    init(*queue);
+    return queue;
+}
+
+createQueue :: ($T: Type, options: QueueOptions(T)) -> Queue(T) {
+    queue: Queue(T);
+    init(*queue, options);
+    return queue;
+}
+
 init :: (queue: *$T/Queue) {
     init(queue, QueueOptions(T.TItem).{});
 }

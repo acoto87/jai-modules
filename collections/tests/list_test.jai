@@ -99,7 +99,7 @@ valueTypeTest :: (count: u32 = 100000) {
         }
     });
 
-    freeArray(rangeValues);
+    free(rangeValues);
 
     print("\n");
 
@@ -140,6 +140,7 @@ referenceTypeTest :: (count: u32 = 100000) {
 
     list: List(*Entry);
     init(*list, options);
+    defer uninit(*list);
 
     entries := allocArray(*Entry, count);
 
@@ -192,7 +193,7 @@ referenceTypeTest :: (count: u32 = 100000) {
 
     print("\n");
 
-    freeArray(entries);
+    free(entries);
 
     entries = allocArray(*Entry, count/2);
     for i : 0..count/2-1 {
@@ -244,7 +245,7 @@ referenceTypeTest :: (count: u32 = 100000) {
         }
     });
 
-    freeArray(rangeValues);
+    free(rangeValues);
 
     print("\n");
 
@@ -272,8 +273,6 @@ referenceTypeTest :: (count: u32 = 100000) {
             assert(list[i-1] >= list[i]);
         }
     });
-
-    uninit(*list);
 
     print("--- End reference type tests ---\n");
 }

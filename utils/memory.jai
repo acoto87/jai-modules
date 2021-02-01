@@ -50,6 +50,7 @@ memoryClear :: inline (value: *$T) {
 
 alloc :: inline ($T: Type, count: s64 = 1, allocator: Allocator = null, $initialized: bool = true) -> *T {
     assert(count > 0);
+
     result := cast(*T) _alloc(count * size_of(T), allocator);
 
     #if initialized {
@@ -75,6 +76,7 @@ realloc :: inline (value: *$T, count: s64 = 1, oldCount: s64 = 1, allocator: All
 
 allocArray :: ($T: Type, length: s64, allocator: Allocator = null, $initialized: bool = true) -> [] T {
     assert(length > 0);
+
     items := alloc(T, length, allocator, initialized);
 
     array: [] T = ---;
@@ -84,26 +86,47 @@ allocArray :: ($T: Type, length: s64, allocator: Allocator = null, $initialized:
     return array;
 }
 
-freeArray :: inline (array: [] $T, allocator: Allocator = null) {
-    if (array.data != null) {
-        _free(cast(*void) array.data, allocator);
-    }
-}
-
 reallocArray :: inline (array: *[] $T, newLength: s64, oldLength: s64, allocator: Allocator = null) {
     array.data = realloc(array.data, newLength, oldLength, allocator);
     array.count = newLength;
 }
 
-free :: inline (s: string, allocator: Allocator = null) {
-    if (s.data != null) {
-        _free(cast(*void) s.data, allocator);
+allocString :: (length: s64, initStr: string = "", allocator: Allocator = null) -> string {
+    assert(length > 0);
+
+    items := alloc(u8, length, allocator);
+
+    if (initStr.count > 0 && initStr.data != null) {
+        memoryCopy(items, initStr.data, min(length, initStr.count));
+    }
+
+    str: string = ---;
+    str.count = length;
+    str.data = items;
+
+    return str;
+}
+
+reallocString :: inline (str: string, newLength: s64, oldLength: s64, allocator: Allocator = null) {
+    str.data = realloc(str.data, newLength, oldLength, allocator);
+    str.count = newLength;
+}
+
+free :: inline (array: [] $T, allocator: Allocator = null) {
+    if (array.data != null) {
+        _free(cast(*void) array.data, allocator);
     }
 }
 
 free :: inline (ptr: *$T, allocator: Allocator = null) {
     if (ptr != null) {
         _free(cast(*void) ptr);
+    }
+}
+
+free :: inline (s: string, allocator: Allocator = null) {
+    if (s.data != null) {
+        _free(cast(*void) s.data, allocator);
     }
 }
 

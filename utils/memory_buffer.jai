@@ -314,8 +314,8 @@ mbWriteBytes :: inline (buffer: *MemoryBuffer, values: ..u8) -> bool {
 }
 
 mbWriteBytes :: (buffer: *MemoryBuffer, values: *u8, count: s64) -> bool {
-    if (count >= buffer.data + buffer._capacity - buffer._pointer) {
-        if (!mb__realloc(buffer, mbPosition(buffer) + count)) {
+    if (buffer._pointer + count >= buffer.data + buffer._capacity) {
+        if (!mb__realloc(buffer, buffer._capacity * 2)) {
             return false;
         }
     }

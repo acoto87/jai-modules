@@ -35,6 +35,18 @@ ListOptions :: struct(TItem: Type) {
     allocator: Allocator;
 }
 
+createList :: ($T: Type) -> List(T) {
+    list: List(T);
+    init(*list);
+    return list;
+}
+
+createList :: ($T: Type, options: ListOptions(T)) -> List(T) {
+    list: List(T);
+    init(*list, options);
+    return list;
+}
+
 init :: inline (list: *$T/List) {
     init(list, ListOptions(T.TItem).{});
 }
@@ -134,9 +146,9 @@ insertNew :: (list: *$T/List, index: s64) -> *T.TItem {
         info := type_info(T.TItem);
 
         if (info.type == Type_Info_Tag.POINTER) {
-            return #code item := alloc(T.TItem);;
+            return #code item := alloc(T.TItem);
         } else {
-            return #code item: T.TItem;;
+            return #code item: T.TItem;
         }
     }();
 

@@ -1147,7 +1147,7 @@ nvgArc :: (ctx: *NVGcontext, cx: f32, cy: f32, r: f32, a0: f32, a1: f32, dir: NV
     move := ifx ctx.ncommands > 0 then NVGcommands.NVG_LINETO else .NVG_MOVETO;
 
     cmds := allocArray(NVGcommand, ndivs + 1);
-    defer freeArray(cmds);
+    defer free(cmds);
 
     px, py, ptanx, ptany: f32 = 0;
 

@@ -50,7 +50,13 @@ HashSetOptions :: struct(TItem: Type) {
     equalsFn: (TItem, TItem) -> bool;
 }
 
-init :: (set: *$T/HashSet, options: HashSetOptions) {
+createHashSet :: ($T: Type, options: HashSetOptions(T)) -> HashSet(T) {
+    set: HashSet(T);
+    init(*set, options);
+    return set;
+}
+
+init :: (set: *$T/HashSet, options: HashSetOptions(T.TItem)) {
     assert(options.capacity > 0);
     assert(options.hashFn != null);
 

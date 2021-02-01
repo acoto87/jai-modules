@@ -148,11 +148,11 @@ heapSort :: (array: *$T, left: s64, right: s64, compareFn: (T, T) -> s64) {
         return;
     }
 
-    heap: BinaryHeap(T);
-    init(*heap, BinaryHeapOptions(T).{
-        capacity = right - left + 1,
-        compareFn = compareFn
-    });
+    options: BinaryHeapOptions(T);
+    options.capacity = right - left + 1;
+    options.compareFn = compareFn;
+
+    heap := createBinaryHeap(T, options);
 
     for i : left..right {
         push(*heap, array[i]);
@@ -194,3 +194,7 @@ heapSort :: inline (array: *$T, left: s64, right: s64, byFn: (T) -> $R) {
         return 0;
     });
 }
+
+#scope_file
+
+#import "collections";

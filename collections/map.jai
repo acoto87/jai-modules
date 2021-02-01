@@ -56,7 +56,13 @@ HashMapPair :: struct(TKey: Type, TValue: Type) {
     value: TValue;
 }
 
-init :: (map: *$T/HashMap, options: HashMapOptions) {
+createMap :: ($TKey: Type, $TValue: Type, options: HashMapOptions(TKey, TValue)) -> HashMap(TKey, TValue) {
+    map: HashMap(TKey, TValue);
+    init(*map, options);
+    return map;
+}
+
+init :: (map: *$T/HashMap, options: HashMapOptions(T.TKey, T.TValue)) {
     assert(options.capacity > 0);
     assert(options.hashFn != null);
 

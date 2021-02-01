@@ -35,6 +35,18 @@ StackOptions :: struct(TItem: Type) {
     allocator: Allocator;
 }
 
+createStack :: ($T: Type) -> Stack(T) {
+    stack: Stack(T);
+    init(*stack);
+    return stack;
+}
+
+createStack :: ($T: Type, options: StackOptions(T)) -> Stack(T) {
+    stack: Stack(T);
+    init(*stack, options);
+    return stack;
+}
+
 init :: (stack: *$T/Stack) {
     init(stack, StackOptions(T.TItem).{});
 }
