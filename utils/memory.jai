@@ -91,6 +91,10 @@ reallocArray :: inline (array: *[] $T, newLength: s64, oldLength: s64, allocator
     array.count = newLength;
 }
 
+allocString :: inline (str: string, allocator: Allocator = null) -> string {
+    return allocString(str.count, str, allocator);
+}
+
 allocString :: (length: s64, initStr: string = "", allocator: Allocator = null) -> string {
     assert(length > 0);
 

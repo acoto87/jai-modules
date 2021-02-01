@@ -191,15 +191,15 @@ for_expansion :: (map: *$T/HashMap, body: Code, flags: For_Flags) #expand {
         entry := *map.entries[i];
         if (entry.active) {
             #if flags & .POINTER {
-                `it := HashMapPair.{
-                    key = entry.key,
-                    value = *entry.value
-                };
+                pair: HashMapPair(T.TKey, *T.TValue);
+                pair.key = entry.key;
+                pair.value = *entry.value;
+                `it := pair;
             } else {
-                `it := HashMapPair.{
-                    key = entry.key,
-                    value = entry.value
-                };
+                pair: HashMapPair(T.TKey, T.TValue);
+                pair.key = entry.key;
+                pair.value = entry.value;
+                `it := pair;
             }
             #insert (remove=assert(false)) body;
         }
