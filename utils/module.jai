@@ -92,7 +92,6 @@ assert :: Basic.assert;
 print :: Basic.print;
 sprint :: Basic.sprint;
 tprint :: Basic.tprint;
-logPrint :: Basic.logprint;
 formatFloat :: Basic.formatFloat;
 FormatFloat :: Basic.FormatFloat;
 exit :: Basic.exit;

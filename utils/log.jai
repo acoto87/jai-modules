@@ -1,4 +1,4 @@
-LogSeverity :: enum {
+LogSeverity :: enum u8 {
     Critical;
     Error;
     Warning;
@@ -6,65 +6,83 @@ LogSeverity :: enum {
     Debug;
 }
 
-initLog :: (severity: LogSeverity) {
-    _severity = severity;
+LoggerData :: struct {
+    severity := LogSeverity.Error;
+    printTime := true;
+    printSeverity := true;
+    printLocation := true;
+    printFullFilePath := false;
 }
 
-logDebug :: inline (formatString: string, args: .. Any, loc := #caller_location) {
-    _logInternal(LogSeverity.Debug, loc.fully_pathed_filename, loc.line_number, formatString, ..args);
+initLogger :: (data: *LoggerData) {
+    context.logger_data = data;
 }
 
-logInfo :: inline (formatString: string, args: .. Any, loc := #caller_location) {
-    _logInternal(LogSeverity.Info, loc.fully_pathed_filename, loc.line_number, formatString, ..args);
-}
+logDebug :: #bake_arguments log(severity = LogSeverity.Debug);
+logInfo :: #bake_arguments log(severity = LogSeverity.Info);
+logWarning :: #bake_arguments log(severity = LogSeverity.Warning);
+logError :: #bake_arguments log(severity = LogSeverity.Error);
+logCritical :: #bake_arguments log(severity = LogSeverity.Critical);
 
-logWarning :: inline (formatString: string, args: .. Any, loc := #caller_location) {
-    _logInternal(LogSeverity.Warning, loc.fully_pathed_filename, loc.line_number, formatString, ..args);
-}
+log :: inline (severity: LogSeverity, formatString: string, args: .. Any, loc := #caller_location) {
+    loggerData := cast(*LoggerData) context.logger_data;
+    assert(loggerData != null);
 
-logError :: inline (formatString: string, args: .. Any, loc := #caller_location) {
-    _logInternal(LogSeverity.Error, loc.fully_pathed_filename, loc.line_number, formatString, ..args);
-}
-
-logCritical :: inline (formatString: string, args: .. Any, loc := #caller_location) {
-    _logInternal(LogSeverity.Critical, loc.fully_pathed_filename, loc.line_number, formatString, ..args);
-}
-
-#scope_file
-
-_severity := LogSeverity.Error;
-
-_logInternal :: (severity: LogSeverity, file: string, line: s64, formatString: string, args: .. Any) {
-    if (severity > _severity) {
+    if (severity > loggerData.severity) {
         return;
     }
-
-    t := time(null);
-    timeInfo := localtime(*t);
-
-    severityStr: string;
-
-    if severity == {
-        case LogSeverity.Critical; severityStr = "CRITICAL";
-        case LogSeverity.Error;    severityStr = "ERROR";
-        case LogSeverity.Warning;  severityStr = "WARNING";
-        case LogSeverity.Info;     severityStr = "INFO";
-        case LogSeverity.Debug;    severityStr = "DEBUG";
-        case;                      severityStr = "UNKOWN";
-    }
-
-    fileName := _getFileName(file);
 
     builder: StringBuilder;
     defer freeBuffers(*builder);
 
-    printToBuilder(*builder, "[%:%:%]", timeInfo.hour, timeInfo.min, timeInfo.sec);
-    printToBuilder(*builder, "[%:(%)] ", fileName, line);
+    if (loggerData.printTime) {
+        t := time(null);
+        timeInfo := localtime(*t);
+
+        printToBuilder(*builder, "[%:%:%]",
+            formatInt(timeInfo.hour, minimum_digits = 2),
+            formatInt(timeInfo.min, minimum_digits = 2),
+            formatInt(timeInfo.sec, minimum_digits = 2));
+    }
+
+    if (loggerData.printSeverity) {
+        severityStr: string;
+
+        if severity == {
+            case LogSeverity.Critical; severityStr = "CRITICAL";
+            case LogSeverity.Error;    severityStr = "ERROR";
+            case LogSeverity.Warning;  severityStr = "WARNING";
+            case LogSeverity.Info;     severityStr = "INFO";
+            case LogSeverity.Debug;    severityStr = "DEBUG";
+            case;                      severityStr = "UNKNOWN";
+        }
+
+        printToBuilder(*builder, "[%] ", severityStr);
+    }
+
+    if (loggerData.printLocation) {
+        file := ifx loggerData.printFullFilePath
+            then loc.fully_pathed_filename
+            else _getFileName(loc.fully_pathed_filename);
+        line := loc.line_number;
+        printToBuilder(*builder, "[%:%] ", file, line);
+    }
+
     printToBuilder(*builder, formatString, ..args);
 
-    message := builderToString(*builder);
-    context.logger(message, severityStr, Log_Mode.EVERYDAY, context.logger_data);
+    finalMessage := builderToString(*builder);
+
+    info: Log_Info;
+    info.location = loc;
+    info.user_flags = cast(u32) severity;
+
+    context.logger(finalMessage, context.logger_data, info);
 }
+
+#scope_file
+
+Basic :: #import "Basic";
+formatInt :: Basic.formatInt;
 
 _getFileName :: (filePath: string) -> string {
     index := 0;
