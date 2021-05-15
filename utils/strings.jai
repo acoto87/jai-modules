@@ -69,6 +69,10 @@ toCString :: (s: string, allocator: Allocator = null) -> *u8 {
     return result;
 }
 
+isEmpty :: inline (s: string) -> bool {
+    return s.count == 0 || s.data == null;
+}
+
 StringBuilder :: Basic.String_Builder;
 freeBuffers :: Basic.free_buffers;
 printToBuilder :: Basic.print_to_builder;

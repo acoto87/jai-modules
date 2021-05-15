@@ -178,6 +178,26 @@ insertRange :: (list: *$T/List, index: s64, items: ..T.TItem) {
     list.count = newCount;
 }
 
+insertRange :: (list: *$T/List, index: s64, other: List(T.TItem)) {
+    assert(list.items != null);
+    assert(index >= 0 && index <= list.count);
+
+    if (other.count == 0) {
+        return;
+    }
+
+    newCount := list.count + other.count;
+
+    if (newCount > list.capacity) {
+        resize(list, newCount);
+    }
+
+    memoryMove(list.items + index + other.count, list.items + index, list.count - index);
+    memoryCopy(list.items + index, other.items, other.count);
+
+    list.count = newCount;
+}
+
 indexOf :: (list: *$T/List, item: T.TItem) -> s64 {
     assert(list.items != null);
 
@@ -271,8 +291,7 @@ reverse :: (list: *$T/List) {
 
     i := 0;
     j := list.count - 1;
-    while (i < j)
-    {
+    while (i < j) {
         tmp := list.items[i];
         list.items[i] = list.items[j];
         list.items[j] = tmp;

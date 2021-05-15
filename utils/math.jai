@@ -54,6 +54,7 @@ F32_MIN        : f32 : Math.FLOAT32_MIN;
 F32_MAX        : f32 : Math.FLOAT32_MAX;
 F32_INFINITY   : f32 : Math.FLOAT32_INFINITY;
 F32_NAN        : f32 : Math.FLOAT32_NAN;
+F32_MIN_NORMAL : f32 : 1.17549435E-38;
 
 F64_MIN        : f64 : Math.FLOAT64_MIN;
 F64_MAX        : f64 : Math.FLOAT64_MAX;
@@ -72,6 +73,34 @@ U32_MAX : u32 : Math.U32_MAX;
 S64_MIN : s64 : Math.S64_MIN;
 S64_MAX : s64 : Math.S64_MAX;
 U64_MAX : u64 : Math.U64_MAX;
+
+rad2Deg :: inline (x: f32) -> f32 {
+    return (x * 180 / PI);
+}
+
+deg2Rad :: inline (x: f32) -> f32 {
+    return (x * PI / 180);
+}
+
+nearlyEquals :: (a: f32, b: f32, epsilon: f32) -> bool {
+    // shortcut, handles infinities
+    if (a == b) {
+        return true;
+    }
+
+    absA := abs(a);
+    absB := abs(b);
+    diff := abs(a - b);
+
+    if (a == 0 || b == 0 || (absA + absB < F32_MIN_NORMAL)) {
+        // a or b is zero or both are extremely close to it
+        // relative error is less meaningful here
+        return diff < (epsilon * F32_MIN_NORMAL);
+    }
+
+    // use relative error
+    return diff / min(absA + absB, F32_MAX) < epsilon;
+}
 
 #scope_file
 

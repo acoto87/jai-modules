@@ -27,16 +27,30 @@
 // 27 Feb 2019 - Modified by Alejandro Coto - @acoto87.
 //     The NVG_DISABLE_CULL_FACE will disable GL_CULL_FACE to allow negative scaling of sprites and paths.
 //
-NANOVG_GL2 :: true;
-NANOVG_GL3 :: false;
-NANOVG_GLES2 :: false;
-NANOVG_GLES3 :: false;
+
+NanoVG_API :: enum {
+    GL2;
+    GL3;
+    GLES2;
+    GLES3;
+}
+
+#module_parameters (
+    api := NanoVG_API.GL2,
+    useStateFilter := true,
+    disableCullFace := true
+);
+
+NANOVG_GL2 :: api == NanoVG_API.GL2;
+NANOVG_GL3 :: api == NanoVG_API.GL3;
+NANOVG_GLES2 :: api == NanoVG_API.GLES2;
+NANOVG_GLES3 :: api == NanoVG_API.GLES3;
 
 NANOVG_GL :: NANOVG_GL2 || NANOVG_GL3 || NANOVG_GLES2 || NANOVG_GLES3;
 NANOVG_GL_USE_UNIFORMBUFFER :: NANOVG_GL3;
 
-NANOVG_GL_USE_STATE_FILTER :: true;
-NVG_DISABLE_CULL_FACE :: true;
+NANOVG_GL_USE_STATE_FILTER :: useStateFilter;
+NVG_DISABLE_CULL_FACE :: disableCullFace;
 
 #load "nanovg.jai";
 

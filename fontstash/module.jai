@@ -21,14 +21,16 @@
 // It is a port from the original [NanoVG](https://github.com/memononen/fontstash)
 // written in C by memononen (https://github.com/memononen).
 //
-FONS_SCRATCH_BUF_SIZE :: 96000;
-FONS_HASH_LUT_SIZE :: 256;
-FONS_INIT_FONTS :: 4;
-FONS_INIT_GLYPHS :: 256;
-FONS_INIT_ATLAS_NODES :: 256;
-FONS_VERTEX_COUNT :: 1024;
-FONS_MAX_STATES :: 20;
-FONS_MAX_FALLBACKS :: 20;
-FONS_DEBUG :: false;
+#module_parameters (
+    FONS_SCRATCH_BUF_SIZE := 96000,
+    FONS_HASH_LUT_SIZE := 256,
+    FONS_INIT_FONTS := 4,
+    FONS_INIT_GLYPHS := 256,
+    FONS_INIT_ATLAS_NODES := 256,
+    FONS_VERTEX_COUNT := 1024,
+    FONS_MAX_STATES := 20,
+    FONS_MAX_FALLBACKS := 20,
+    FONS_DEBUG := false
+);
 
 #load "fontstash.jai";
