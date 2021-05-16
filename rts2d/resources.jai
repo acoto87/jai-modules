@@ -1,0 +1,1 @@
+ResourceKind :: u16;
