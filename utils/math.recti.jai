@@ -41,12 +41,12 @@ recti :: inline (r: Rect) -> Recti {
     return recti(r.x, r.y, r.w, r.h);
 }
 
-contains :: inline (r: Rect, x: s32, y: s32) -> bool {
+contains :: inline (r: Recti, x: s32, y: s32) -> bool {
     return x >= r.x && x <= r.x + r.w &&
            y >= r.y && y <= r.y + r.h;
 }
 
-contains :: inline (r: Rect, x: f32, y: f32) -> bool {
+contains :: inline (r: Recti, x: f32, y: f32) -> bool {
     return x >= r.x && x <= r.x + r.w &&
            y >= r.y && y <= r.y + r.h;
 }

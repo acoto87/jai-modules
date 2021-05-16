@@ -1,3 +1,5 @@
+EPSILON_FOR_EQUALITY :: 0.0001;
+
 Vec2 :: struct {
     x, y: f32;
 }
@@ -28,7 +30,7 @@ vect2 :: inline (v: Vec2i) -> Vec2 {
 
 equals :: inline (v1: Vec2, v2: Vec2) -> bool {
     d := distance(v1, v2);
-    return nearlyEquals(d, 0);
+    return nearlyEquals(d, 0, EPSILON_FOR_EQUALITY);
 }
 
 isZero :: inline (v: Vec2) -> bool {
@@ -89,14 +91,14 @@ operator + :: (v1: Vec2, v2: Vec2) -> Vec2 {
     return r;
 }
 
-operator + :: (v: Vec2, x: s32) -> Vec2 #symetric {
+operator + :: (v: Vec2, x: s32) -> Vec2 #symmetric {
     r: Vec2 = ---;
     r.x = v.x + x;
     r.y = v.y + x;
     return r;
 }
 
-operator + :: (v: Vec2, x: f32) -> Vec2 #symetric {
+operator + :: (v: Vec2, x: f32) -> Vec2 #symmetric {
     r: Vec2 = ---;
     r.x = v.x + x;
     r.y = v.y + x;
@@ -110,14 +112,14 @@ operator - :: (v1: Vec2, v2: Vec2) -> Vec2 {
     return r;
 }
 
-operator - :: (v: Vec2, x: s32) -> Vec2 #symetric {
+operator - :: (v: Vec2, x: s32) -> Vec2 #symmetric {
     r: Vec2 = ---;
     r.x = v.x - x;
     r.y = v.y - x;
     return r;
 }
 
-operator - :: (v: Vec2, x: f32) -> Vec2 #symetric {
+operator - :: (v: Vec2, x: f32) -> Vec2 #symmetric {
     r: Vec2 = ---;
     r.x = v.x - x;
     r.y = v.y - x;
@@ -131,14 +133,14 @@ operator * :: (v1: Vec2, v2: Vec2) -> Vec2 {
     return r;
 }
 
-operator * :: (v: Vec2, x: s32) -> Vec2 #symetric {
+operator * :: (v: Vec2, x: s32) -> Vec2 #symmetric {
     r: Vec2 = ---;
     r.x = v.x * x;
     r.y = v.y * x;
     return r;
 }
 
-operator * :: (v: Vec2, x: f32) -> Vec2 #symetric {
+operator * :: (v: Vec2, x: f32) -> Vec2 #symmetric {
     r: Vec2 = ---;
     r.x = v.x * x;
     r.y = v.y * x;

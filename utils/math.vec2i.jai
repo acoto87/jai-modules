@@ -77,14 +77,14 @@ operator + :: (v1: Vec2i, v2: Vec2i) -> Vec2i {
     return r;
 }
 
-operator + :: (v: Vec2i, x: s32) -> Vec2i #symetric {
+operator + :: (v: Vec2i, x: s32) -> Vec2i #symmetric {
     r: Vec2i = ---;
     r.x = v.x + x;
     r.y = v.y + x;
     return r;
 }
 
-operator + :: (v: Vec2i, x: f32) -> Vec2i #symetric {
+operator + :: (v: Vec2i, x: f32) -> Vec2i #symmetric {
     r: Vec2i = ---;
     r.x = v.x + cast(s32) x;
     r.y = v.y + cast(s32) x;
@@ -98,14 +98,14 @@ operator - :: (v1: Vec2i, v2: Vec2i) -> Vec2i {
     return r;
 }
 
-operator - :: (v: Vec2i, x: s32) -> Vec2i #symetric {
+operator - :: (v: Vec2i, x: s32) -> Vec2i #symmetric {
     r: Vec2i = ---;
     r.x = v.x - x;
     r.y = v.y - x;
     return r;
 }
 
-operator - :: (v: Vec2i, x: f32) -> Vec2i #symetric {
+operator - :: (v: Vec2i, x: f32) -> Vec2i #symmetric {
     r: Vec2i = ---;
     r.x = v.x - cast(s32) x;
     r.y = v.y - cast(s32) x;
@@ -119,17 +119,17 @@ operator * :: (v1: Vec2i, v2: Vec2i) -> Vec2i {
     return r;
 }
 
-operator * :: (v: Vec2i, x: s32) -> Vec2i #symetric {
+operator * :: (v: Vec2i, x: s32) -> Vec2i #symmetric {
     r: Vec2i = ---;
     r.x = v.x * x;
     r.y = v.y * x;
     return r;
 }
 
-operator * :: (v: Vec2i, x: f32) -> Vec2i #symetric {
+operator * :: (v: Vec2i, x: f32) -> Vec2i #symmetric {
     r: Vec2i = ---;
-    r.x = v.x * cast(s32) x;
-    r.y = v.y * cast(s32) x;
+    r.x = cast(s32) (v.x * x);
+    r.y = cast(s32) (v.y * x);
     return r;
 }
 

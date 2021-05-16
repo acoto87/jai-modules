@@ -26,7 +26,9 @@ logCritical :: #bake_arguments log(severity = LogSeverity.Critical);
 
 log :: inline (severity: LogSeverity, formatString: string, args: .. Any, loc := #caller_location) {
     loggerData := cast(*LoggerData) context.logger_data;
-    assert(loggerData != null);
+    if (loggerData == null) {
+        return;
+    }
 
     if (severity > loggerData.severity) {
         return;
