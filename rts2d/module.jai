@@ -1,3 +1,10 @@
+#module_parameters (
+    MaxPlayersCount: s32 = 8,
+    MaxPlayerResourcesCount: s32 = 3,
+    MaxMapTilesWidth: s32 = 64,
+    MaxMapTilesHeight: s32 = 64
+);
+
 #load "constants.jai";
 #load "input.jai";
 #load "color.jai";
@@ -13,6 +20,7 @@
 #load "scenes.jai";
 #load "players.jai";
 #load "ui.jai";
+#load "map.jai";
 #load "game.jai";
 #load "context.jai";
 

@@ -86,7 +86,7 @@ updateScene :: () {
     } else {
         // updateCheatsPanel();
         updateUIButtons(true); // !cheatsEnabledAndVisible(scene));
-        // updateUICursor();
+        updateUICursor();
         updateAnimations();
     }
 }
@@ -116,15 +116,3 @@ renderScene :: () {
 }
 
 #scope_file
-
-// SceneTypeMapping :: struct {
-//     sceneType: SceneType;
-//     type: Type;
-// }
-
-// sceneTypeMapping : [] SceneDescriptor = .[
-//     .{ SceneType.Splash,   enterSceneSplash,   null, updateSceneSplash,   null },
-//     .{ SceneType.MainMenu, enterSceneMainMenu, null, null,                null },
-//     .{ SceneType.Briefing, enterSceneBriefing, null, updateSceneBriefing, null },
-//     .{ SceneType.Map,      null,               null, null,                null }
-// ];

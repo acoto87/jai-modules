@@ -336,6 +336,24 @@ updateUIButtons :: (hotKeysEnabled: bool) {
     }
 }
 
+updateUICursor :: () {
+    ctx := context.gameContext;
+    assert(ctx != null);
+
+    input := *ctx.input;
+
+    entity := findUIEntity("cursor");
+    if (entity != null) {
+        cursor := getComponent(entity, CursorComponent);
+        assert(cursor != null);
+
+        transform := getComponent(entity, TransformComponent);
+        assert(transform != null);
+
+        transform.position = input.pos - cursor.hot;
+    }
+}
+
 renderUIEntities :: () {
     entities := getUIEntities();
     for entity : entities {

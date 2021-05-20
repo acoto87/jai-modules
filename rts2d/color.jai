@@ -13,7 +13,7 @@ COLOR_GREEN       :: Color.{ r = 0, g = 199, b = 0, a = 255 };
 COLOR_BLUE        :: Color.{ r = 0, g = 0, b = 199, a = 255 };
 COLOR_YELLOW      :: Color.{ r = 199, g = 199, b = 0, a = 255 };
 
-rgbaColor :: inline (r: u8, g: u8, b: u8, a: u8) -> Color {
+rgba :: inline (r: u8, g: u8, b: u8, a: u8) -> Color {
     color: Color = ---;
     color.r = r;
     color.g = g;
@@ -22,6 +22,6 @@ rgbaColor :: inline (r: u8, g: u8, b: u8, a: u8) -> Color {
     return color;
 }
 
-rgbColor :: inline (r: u8, g: u8, b: u8) -> Color {
-    return rgbaColor(r, g, b, 255);
+rgb :: inline (r: u8, g: u8, b: u8) -> Color {
+    return rgba(r, g, b, 255);
 }

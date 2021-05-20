@@ -6,12 +6,6 @@ EntityType :: enum u16 {
     // Units
     Unit;
 
-    // ??
-    Road;
-    Wall;
-    Ruin;
-    Forest;
-
     // UI
     Image;
     Text;
@@ -20,9 +14,6 @@ EntityType :: enum u16 {
     Cursor;
 
     Audio;
-
-    Projectile;
-    Spell;
 
     Minimap;
     Animation;
@@ -299,18 +290,12 @@ RenderFunc :: #type (entity: *Entity);
 renderFns : [] RenderFunc = .[
     null,               // NONE
     null,               // UNIT
-    null,               // ROAD
-    null,               // WALL
-    null,               // RUIN
-    null,               // FOREST
     renderImage,        // IMAGE
     renderText,         // TEXT
     renderRect,         // RECT
     renderButton,       // BUTTON
     renderImage,        // CURSOR
     null,               // AUDIO
-    null,               // PROJECTILE
-    null,               // SPELL
     null,               // MINIMAP
     renderAnimation,    // ANIMATION
 ];

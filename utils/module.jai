@@ -122,6 +122,10 @@ glLoad :: (getProcAddress: GetProcAddressFunction = null) {
     gl_load(*gl, getProcAddress);
 }
 
+inRange :: inline (x: s32, min: s32, max: s32) -> bool {
+    return x >= min && x < max;
+}
+
 #scope_file
 
 Basic :: #import "Basic";
