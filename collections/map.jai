@@ -25,9 +25,10 @@ HashMap :: struct(TKey: Type, TValue: Type) {
     count: s64;
     capacity: s64;
     loadFactor: float64;
-    shift: s64;
     defaultValue: TValue;
     freeItems: bool;
+    firstInOrder: s64;
+    lastInOrder: s64;
     allocator: Allocator;
     hashFn: (TKey) -> s64;
     equalsFn: (TKey, TKey) -> bool;
@@ -37,7 +38,11 @@ HashMap :: struct(TKey: Type, TValue: Type) {
 HashMapEntry :: struct(TKey: Type, TValue: Type) {
     active: bool;
     hash: s64;
+    idx: s64;
+    prev: s64;
     next: s64;
+    prevInOrder: s64;
+    nextInOrder: s64;
     key: TKey;
     value: TValue;
 }
@@ -68,9 +73,10 @@ init :: (map: *$T/HashMap, options: HashMapOptions(T.TKey, T.TValue)) {
 
     map.capacity = options.capacity;
     map.loadFactor = 0.8;
-    map.shift = 29;
     map.defaultValue = options.defaultValue;
     map.freeItems = options.freeItems;
+    map.firstInOrder = -1;
+    map.lastInOrder = -1;
     map.allocator = options.allocator;
     map.hashFn = options.hashFn;
     map.equalsFn = options.equalsFn;
@@ -158,11 +164,30 @@ set :: (map: *$T/HashMap, key: T.TKey, value: T.TValue) {
 removeKey :: (map: *$T/HashMap, key: T.TKey) {
     assert(map.entries != null);
 
-    found, entry, prevEntry := getEntry(map, key);
+    found, entry := getEntry(map, key);
     if (found) {
         value := entry.value;
 
-        prevEntry.next = entry.next;
+        if (entry.prev >= 0) {
+            prevEntry := *map.entries[entry.prev];
+            prevEntry.next = entry.next;
+        }
+
+        if (entry.next >= 0) {
+            nextEntry := *map.entries[entry.next];
+            nextEntry.prev = entry.prev;
+        }
+
+        if (entry.prevInOrder >= 0) {
+            prevEntryInOrder := *map.entries[entry.prevInOrder];
+            prevEntryInOrder.nextInOrder = entry.nextInOrder;
+        }
+
+        if (entry.nextInOrder >= 0) {
+            nextEntryInOrder := *map.entries[entry.nextInOrder];
+            nextEntryInOrder.prevInOrder = entry.prevInOrder;
+        }
+
         entry.value = map.defaultValue;
         entry.active = false;
 
@@ -187,22 +212,22 @@ removeKey :: (map: *$T/HashMap, key: T.TKey) {
 for_expansion :: (map: *$T/HashMap, body: Code, flags: For_Flags) #expand {
     #assert(!(flags & .REVERSE));
 
-    for i : 0..map.capacity - 1 {
-        entry := *map.entries[i];
-        if (entry.active) {
-            #if flags & .POINTER {
-                pair: HashMapPair(T.TKey, *T.TValue);
-                pair.key = entry.key;
-                pair.value = *entry.value;
-                `it := pair;
-            } else {
-                pair: HashMapPair(T.TKey, T.TValue);
-                pair.key = entry.key;
-                pair.value = entry.value;
-                `it := pair;
-            }
-            #insert (remove=assert(false)) body;
+    current := map.firstInOrder;
+    while (current >= 0) {
+        entry := *map.entries[current];
+        #if flags & .POINTER {
+            pair: HashMapPair(T.TKey, *T.TValue);
+            pair.key = entry.key;
+            pair.value = *entry.value;
+            `it := pair;
+        } else {
+            pair: HashMapPair(T.TKey, T.TValue);
+            pair.key = entry.key;
+            pair.value = entry.value;
+            `it := pair;
         }
+        #insert (remove=assert(false)) body;
+        current = entry.nextInOrder;
     }
 }
 
@@ -210,25 +235,22 @@ for_expansion :: (map: *$T/HashMap, body: Code, flags: For_Flags) #expand {
 
 #import "utils";
 
-// fibHash :: (hash: s64, shift: s64) -> s64 {
-//     hashConstant : s64 : 2654435769;
-//     return (hash * hashConstant) >> shift;
-// }
-
 resize :: (map: *$T/HashMap) {
     oldCapacity := map.capacity;
     oldEntries := map.entries;
+    oldFirstInOrder := map.firstInOrder;
 
-    map.shift -= 1;
-    map.capacity = 1 << (32 - map.shift);
+    map.capacity = oldCapacity * 2;
     map.entries = alloc(HashMapEntry(T.TKey, T.TValue), count = map.capacity, allocator = map.allocator);
+    map.firstInOrder = -1;
+    map.lastInOrder = -1;
     map.count = 0;
 
-    for i : 0..oldCapacity - 1 {
-        entry := *oldEntries[i];
-        if (entry.active) {
-            insert(map, entry.key, entry.value);
-        }
+    current := oldFirstInOrder;
+    while (current >= 0) {
+        entry := *oldEntries[current];
+        insert(map, entry.key, entry.value);
+        current = entry.nextInOrder;
     }
 
     free(oldEntries, map.allocator);
@@ -265,31 +287,56 @@ insert :: (map: *$T/HashMap, key: T.TKey, value: T.TValue) {
 
         entry.next = next;
 
-        map.entries[next].active = true;
-        map.entries[next].hash = hash;
-        map.entries[next].next = -1;
-        map.entries[next].key = key;
-        map.entries[next].value = value;
+        nextEntry := *map.entries[next];
+        nextEntry.active = true;
+        nextEntry.hash = hash;
+        nextEntry.idx = next;
+        nextEntry.prev = entry.idx;
+        nextEntry.next = -1;
+        nextEntry.prevInOrder = map.lastInOrder;
+        nextEntry.nextInOrder = -1;
+        nextEntry.key = key;
+        nextEntry.value = value;
+
+        if (map.lastInOrder >= 0) {
+            lastEntryInOrder := *map.entries[map.lastInOrder];
+            lastEntryInOrder.nextInOrder = next;
+        }
+
+        map.lastInOrder = next;
     } else {
         entry.active = true;
         entry.hash = hash;
+        entry.idx = hash;
+        entry.prev = -1;
         entry.next = -1;
+        entry.prevInOrder = map.lastInOrder;
+        entry.nextInOrder = -1;
         entry.key = key;
         entry.value = value;
+
+        if (map.firstInOrder < 0) {
+            map.firstInOrder = hash;
+        }
+
+        if (map.lastInOrder >= 0) {
+            lastEntryInOrder := *map.entries[map.lastInOrder];
+            lastEntryInOrder.nextInOrder = hash;
+        }
+
+        map.lastInOrder = hash;
     }
 
     map.count += 1;
 }
 
-getEntry :: (map: *$T/HashMap, key: T.TKey) -> bool, *HashMapEntry(T.TKey, T.TValue), *HashMapEntry(T.TKey, T.TValue) {
+getEntry :: (map: *$T/HashMap, key: T.TKey) -> bool, *HashMapEntry(T.TKey, T.TValue) {
     found := false;
 
     hash := map.hashFn(key) % map.capacity;
     index := hash;
-    prevIndex := index;
 
     entry := *map.entries[index];
-    prevEntry := entry;
     while (entry.active) {
         if (entry.hash == hash) {
             if (map.equalsFn != null) {
@@ -309,14 +356,11 @@ getEntry :: (map: *$T/HashMap, key: T.TKey) -> bool, *HashMapEntry(T.TKey, T.TVa
             break;
         }
 
-        prevIndex = index;
-        prevEntry = entry;
-
         index = entry.next;
         entry = *map.entries[index];
     }
 
-    return found, entry, prevEntry;
+    return found, entry;
 }
 
 findEmptyEntry :: (map: *$T/HashMap, index: s64) -> s64 {

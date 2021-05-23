@@ -21,7 +21,9 @@
 //
 // It includes commonly used data structures like lists, stacks, queues and hash maps.
 //
-LOAD_TESTS :: false;
+#module_parameters (
+    loadTests := false
+);
 
 #load "list.jai";
 #load "map.jai";
@@ -31,7 +33,7 @@ LOAD_TESTS :: false;
 #load "binary_heap.jai";
 #load "stable_list.jai";
 
-#if LOAD_TESTS {
+#if loadTests {
     #load "tests/list_test.jai";
     #load "tests/map_test.jai";
     #load "tests/stack_test.jai";

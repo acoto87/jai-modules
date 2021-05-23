@@ -19,7 +19,7 @@ to_upper :: Basic.to_upper;
 
 #import "utils";
 
-valueTypeTest :: (count: s64 = 100000) {
+valueTypeTest :: ($count: s64 = 100000) {
     options := HashMapOptions(s64, s64).{
         hashFn = (k: s64) -> s64 {
             return k;
@@ -64,6 +64,16 @@ valueTypeTest :: (count: s64 = 100000) {
             key := randomNext() % count;
             removeKey(*map, key);
             assert(!containsKey(*map, key));
+        }
+    });
+
+    print("\n");
+
+    measure("test 5: iterate in order", #code {
+        last := -1;
+        for * entry : map {
+            assert(entry.key >= last);
+            last = entry.key;
         }
     });
 }
@@ -171,6 +181,23 @@ referenceTypeTest :: ($count: u32 = 10000) {
             index := randomNext() % count;
             removeKey(*map, strings[index]);
             assert(!containsKey(*map, strings[index]));
+        }
+    });
+
+    print("\n");
+
+    measure("test 5: iterate in order", #code {
+        last := -1;
+        for * entry : map {
+            index := -1;
+            for i : 0..strings.count-1 {
+                if (equal(entry.key, strings[i])) {
+                    index = i;
+                    break;
+                }
+            }
+            assert(index >= last);
+            last = index;
         }
     });
 }
