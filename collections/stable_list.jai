@@ -272,16 +272,16 @@ operator [] :: (list: *$T/StableList, index: s64) -> T.TItem {
     return list.items[index];
 }
 
-operator [] :: (list: $T/List, index: s64) -> T.TItem {
+operator [] :: (list: $T/StableList, index: s64) -> T.TItem {
     assert(index >= 0 && index < list.capacity);
     assert(list.free[index] < 0);
     return list.items[index];
 }
 
-fromArray :: inline (array: [] $T, options: StableListOptions(T)) -> List(T) {
+fromArray :: inline (array: [] $T, options: StableListOptions(T)) -> StableList(T) {
     options.capacity = max(options.capacity, array.count);
 
-    list: List(T);
+    list: StableList(T);
     init(*list, options);
     addRange(*list, ..array);
     return list;

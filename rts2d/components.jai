@@ -292,12 +292,6 @@ getComponent :: (entity: *Entity, type: ComponentType) -> *Component {
     else if (type == ComponentType.Unit)         return ref(*manager.units, index);
     else if (type == ComponentType.Animations)   return ref(*manager.animations, index);
     else if (type == ComponentType.StateMachine) return ref(*manager.stateMachines, index);
-    // else if (type == ComponentType.Road)         return ref(*manager.roads, index);
-    // else if (type == ComponentType.Wall)         return ref(*manager.walls, index);
-    // else if (type == ComponentType.Ruin)         return ref(*manager.ruins, index);
-    // else if (type == ComponentType.Forest)       return ref(*manager.forests, index);
-    // else if (type == ComponentType.Projectile)   return ref(*manager.projectiles, index);
-    // else if (type == ComponentType.Spell)        return ref(*manager.spells, index);
     else if (type == ComponentType.UI)           return ref(*manager.uis, index);
     else if (type == ComponentType.Text)         return ref(*manager.texts, index);
     else if (type == ComponentType.Rect)         return ref(*manager.rects, index);

@@ -411,9 +411,6 @@ renderButton :: (entity: *Entity) {
     button := getComponent(entity, ButtonComponent);
     assert(button != null);
 
-    text := getComponent(entity, TextComponent);
-    sprite := getComponent(entity, SpriteComponent);
-
     if (ui.enabled && button.enabled) {
         nvgSave(ctx.gfx);
         nvgTranslate(ctx.gfx, transform.position.x, transform.position.y);
@@ -427,6 +424,7 @@ renderButton :: (entity: *Entity) {
 
         // render foreground
         {
+            sprite := getComponent(entity, SpriteComponent);
             if (sprite != null && sprite.enabled) {
                 backgroundSize := vec2(button.backgroundNormalSprite.frameWidth, button.backgroundNormalSprite.frameHeight);
                 foregroundSize := vec2(sprite.sprite.frameWidth, sprite.sprite.frameHeight);
@@ -446,6 +444,7 @@ renderButton :: (entity: *Entity) {
 
         // render text
         {
+            text := getComponent(entity, TextComponent);
             if (text != null && text.enabled && !isEmpty(text.text)) {
                 params: NVGfontParams;
                 params.fontIndex = text.fontIndex;
@@ -492,7 +491,7 @@ renderAnimation :: (entity: *Entity) {
                 animFrameIndex := cast(s32) (anim.animTime * anim.frames.count);
                 animFrameIndex = clamp(animFrameIndex, 0, cast(s32) anim.frames.count - 1);
 
-                spriteFrameIndex := anim.frames.items[animFrameIndex];
+                spriteFrameIndex := anim.frames[animFrameIndex];
                 frame := getSpriteFrame(anim.sprite, spriteFrameIndex);
 
                 updateSpriteImage(anim.sprite, frame.data);
