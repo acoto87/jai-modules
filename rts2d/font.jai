@@ -7,13 +7,15 @@ ALL_HIGHLIGHT : s32 : -2;
 MAX_LINES : s32 : 48;
 TAB_WIDTH : s32 : 2;
 
+PRINTABLE_CHARS_COUNT :: 126 - 32 + 1; // last printable char - first printable char + 1
+
 FontData :: struct {
     spriteWidth: s32;
     spriteHeight: s32;
     lineHeight: f32;
     advance: s32;
     sprite: Sprite;
-    data: [95] Rect;
+    data: [PRINTABLE_CHARS_COUNT] Rect;
 }
 
 colorToNVGcolor :: (color: Color) -> NVGcolor {
@@ -135,8 +137,21 @@ nvgSplitTextIntoLines :: (text: *u8, maxLines: s32, lines: [] NVGTextSpan, width
     e := text;
     while (k < maxLines) {
         c := <<e;
+
         if (c == #char "\0") {
             break;
+        } else if (c == #char "\r") {
+            // a new line is generated for each \r\n
+            assert(<<(e + 1) == #char "\n");
+            e += 1;
+
+            lines[k].start = s;
+            lines[k].end = e - 1;
+            lines[k].width = x;
+            k += 1;
+
+            s = e + 1;
+            x = 0;
         } else if (c == #char "\n") {
             // a new line is generated for each \n
             lines[k].start = s;
@@ -200,7 +215,7 @@ nvgSplitTextIntoLines :: (text: *u8, maxLines: s32, lines: [] NVGTextSpan, width
                 if (lines[i].start[0] == #char " " && params.trimming >= .NVG_TRIM_SPACES) {
                     lines[i].width -= whiteSpaceWidth;
                     lines[i].start += 1;
-                } else if (lines[i].start[i] == #char "\t" && params.trimming >= .NVG_TRIM_ALL) {
+                } else if (lines[i].start[0] == #char "\t" && params.trimming >= .NVG_TRIM_ALL) {
                     lines[i].width -= TAB_WIDTH * whiteSpaceWidth;
                     lines[i].start += 1;
                 } else {
@@ -285,14 +300,26 @@ nvgSingleSpriteTextSpan :: (gfx: *NVGcontext,
 
         batch := nvgBeginImageBatch(gfx, fontData.sprite.image, count);
 
-        for i : range(s32, 0, count) {
+        s := *text[index];
+        e := s;
+
+        while (count > 0) {
             if (boundings.x > 0 && x * scale > boundings.x) {
                 break;
             }
 
-            c := text[index + i];
+            c := <<e;
 
-            if (c == #char "\n") {
+            if (c == #char "\r") {
+                assert(<<(e + 1) == #char "\n");
+                e += 1;
+
+                // when we are rendering a single text span, all newline characters
+                // are rendered as ' ' since a single text span is considered
+                // a one line of text, it won't go to the next line
+                rs := fontData.data[getCharIndex(#char " ")];
+                x += rs.w + fontData.advance;
+            } else if (c == #char "\n") {
                 // when we are rendering a single text span, all newline characters
                 // are rendered as ' ' since a single text span is considered
                 // a one line of text, it won't go to the next line
@@ -315,6 +342,9 @@ nvgSingleSpriteTextSpan :: (gfx: *NVGcontext,
 
                 x += rs.w + fontData.advance;
             }
+
+            e += 1;
+            count -= 1;
         }
 
         nvgEndImageBatch(gfx, batch);

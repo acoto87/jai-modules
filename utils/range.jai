@@ -35,13 +35,17 @@ for_expansion :: (range: *$T/Range, body: Code, $flags: For_Flags) #expand {
     dir := sign(range.step);
     step := abs(range.step);
 
+    index := 0;
     current := 0;
     while (true) {
         if (range.toInclusive && current > size) break;
         else if (!range.toInclusive && current >= size) break;
 
         `it := cast,no_check(T.type) (range.from + current * dir);
+        `it_index := index;
+
         current += step;
+        index += 1;
 
         #insert (remove=assert(false)) body;
     }

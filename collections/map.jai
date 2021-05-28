@@ -212,6 +212,7 @@ removeKey :: (map: *$T/HashMap, key: T.TKey) {
 for_expansion :: (map: *$T/HashMap, body: Code, flags: For_Flags) #expand {
     #assert(!(flags & .REVERSE));
 
+    index := 0;
     current := map.firstInOrder;
     while (current >= 0) {
         entry := *map.entries[current];
@@ -226,8 +227,12 @@ for_expansion :: (map: *$T/HashMap, body: Code, flags: For_Flags) #expand {
             pair.value = entry.value;
             `it := pair;
         }
+        `it_index := index;
+
         #insert (remove=assert(false)) body;
+
         current = entry.nextInOrder;
+        index += 1;
     }
 }
 
