@@ -1,3 +1,7 @@
+isEmpty :: inline (s: string) -> bool {
+    return s.count == 0 || s.data == null;
+}
+
 strlen :: (str: *u8) -> s64 {
     assert(str != null);
 
@@ -69,8 +73,15 @@ toCString :: (s: string, allocator: Allocator = null) -> *u8 {
     return result;
 }
 
-isEmpty :: inline (s: string) -> bool {
-    return s.count == 0 || s.data == null;
+for_expansion :: (str: *string, body: Code, flags: For_Flags) #expand {
+    #assert(!(flags & .REVERSE));
+    #assert(!(flags & .POINTER));
+
+    for i : 0..str.count-1 {
+        `it := str[i];
+        `it_index := i;
+        #insert (remove=assert(false)) body;
+    }
 }
 
 StringBuilder :: Basic.String_Builder;

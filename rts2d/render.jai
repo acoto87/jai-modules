@@ -182,34 +182,6 @@ nvgStrokePolyline :: (gfx: *NVGcontext, points: [] Vec2, color: NVGcolor, width:
     nvgRestore(gfx);
 }
 
-NVGwrap :: enum {
-	NVG_WRAP_NONE :: 1<<0;
-	NVG_WRAP_WORD :: 1<<1;
-}
-
-NVGtrim :: enum {
-    NVG_TRIM_NONE :: 1<<0;
-    NVG_TRIM_SPACES :: 1<<1;
-    NVG_TRIM_ALL :: 1<<2;
-}
-
-NVGfontParams :: struct {
-    fontIndex: s32;
-    fontSize: f32;
-    lineHeight: f32;
-    fontColor: NVGcolor;
-    highlightColor: NVGcolor;
-    highlightIndex: s32;
-    highlightCount: s32;
-    boundings: Vec2;
-    horizontalAlign: NVGalign;
-    verticalAlign: NVGalign;
-    lineAlign: NVGalign;
-    wrapping: NVGwrap;
-    trimming: NVGtrim;
-    fontData: FontData;
-}
-
 getColorFromList :: (index: s32) -> NVGcolor {
     rgb := colors[index % colors.count];
 

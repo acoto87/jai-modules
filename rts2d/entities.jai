@@ -364,9 +364,9 @@ renderText :: (entity: *Entity) {
         params.fontData = ctx.fonts[text.fontIndex];
 
         if (text.multiline) {
-            nvgMultiSpriteText(ctx.gfx, toCString(text.text, tempAllocator), 0, 0, params);
+            nvgMultiSpriteText(ctx.gfx, text.text, 0, 0, params);
         } else {
-            nvgSingleSpriteText(ctx.gfx, toCString(text.text, tempAllocator), 0, 0, params);
+            nvgSingleSpriteText(ctx.gfx, text.text, 0, 0, params);
         }
 
         nvgRestore(ctx.gfx);
@@ -460,7 +460,7 @@ renderButton :: (entity: *Entity) {
                 params.wrapping = textWrappingToNVGwrap(text.wrapping);
                 params.fontData = ctx.fonts[text.fontIndex];
 
-                nvgSingleSpriteText(ctx.gfx, toCString(text.text, tempAllocator), 0, 0, params);
+                nvgSingleSpriteText(ctx.gfx, text.text, 0, 0, params);
             }
         }
 
