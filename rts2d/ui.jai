@@ -3,27 +3,27 @@ setUIEntityStatus :: inline (entity: *Entity, enabled: bool) {
 }
 
 clearUIText :: (entity: *Entity) {
-    textComponent := getComponent(entity, TextComponent);
-    assert(textComponent != null);
+    text := getComponent(entity, TextComponent);
+    assert(text != null);
 
-    free(textComponent.text);
+    free(text.text);
 
-    textComponent.text = "";
-    textComponent.enabled = false;
+    text.text = "";
+    text.enabled = false;
 }
 
-setUIText :: (entity: *Entity, text: string) {
-    textComponent := getComponent(entity, TextComponent);
-    assert(textComponent != null);
+setUIText :: (entity: *Entity, str: string) {
+    text := getComponent(entity, TextComponent);
+    assert(text != null);
 
-    free(textComponent.text);
+    free(text.text);
 
-    textComponent.text = allocString(text);
-    textComponent.enabled = true;
+    text.text = allocString(str);
+    text.enabled = true;
 }
 
 setUITextFormat :: (entity: *Entity, format: string, args: ..Any) {
-    text := tprint(format, args);
+    text := sprint(format, args);
     setUIText(entity, text);
 }
 

@@ -8,6 +8,8 @@ Scene :: struct {
     //type: SceneType;
     entityManager: EntityManager;
     componentsManager: ComponentsManager;
+    cheatsManager: CheatsManager;
+    cheatsPanel: CheatsPanel;
 
     enterSceneFn: SceneFn;
     leaveSceneFn: SceneFn;
@@ -29,6 +31,7 @@ createScene :: ($type: Type) -> *type {
     scene := alloc(type);
     initEntityManager(*scene.entityManager);
     initComponentsManager(*scene.componentsManager);
+    initCheatsManager(*scene.cheatsManager);
     return scene;
 }
 
@@ -84,8 +87,8 @@ updateScene :: () {
     if (ctx.scene.updateSceneFn != null) {
         ctx.scene.updateSceneFn();
     } else {
-        // updateCheatsPanel();
-        updateUIButtons(true); // !cheatsEnabledAndVisible(scene));
+        updateCheatsPanel();
+        updateUIButtons(!cheatsEnabledAndVisible());
         updateUICursor();
         updateAnimations();
     }

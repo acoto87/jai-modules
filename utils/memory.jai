@@ -49,7 +49,7 @@ memoryClear :: inline (value: *$T) {
 }
 
 alloc :: inline ($T: Type, count: s64 = 1, allocator: Allocator = null, $initialized: bool = true) -> *T {
-    assert(count > 0);
+    assert(count >= 0);
 
     result := cast(*T) _alloc(count * size_of(T), allocator);
 
@@ -96,7 +96,7 @@ allocString :: inline (str: string, allocator: Allocator = null) -> string {
 }
 
 allocString :: (length: s64, initStr: string = "", allocator: Allocator = null) -> string {
-    assert(length > 0);
+    assert(length >= 0);
 
     items := alloc(u8, length, allocator);
 

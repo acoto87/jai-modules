@@ -65,7 +65,6 @@ Map :: struct {
     finder: PathFinder;
     // uiCommand: UICommand;
     // flashStatus: FlashStatus;
-    // cheatStatus: CheatStatus;
 
     playersCount: s32;
     players: [MAX_PLAYERS_COUNT] PlayerInfo;

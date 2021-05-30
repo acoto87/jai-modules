@@ -7,3 +7,6 @@ MAX_PLAYERS_COUNT           : s32 : MaxPlayersCount;
 MAX_PLAYER_RESOURCES_COUNT  : s32 : MaxPlayerResourcesCount;
 MAX_MAP_TILES_WIDTH         : s32 : MaxMapTilesWidth;
 MAX_MAP_TILES_HEIGHT        : s32 : MaxMapTilesHeight;
+
+STATUS_TEXT_MAX_LENGTH      : s32 : 40;
+CHEAT_TEXT_MAX_LENGTH       : s32 : 32;

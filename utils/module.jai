@@ -33,6 +33,7 @@ f64 :: float64;
 #load "memory_buffer.jai";
 #load "arrays.jai";
 #load "strings.jai";
+#load "fixed_string.jai";
 #load "random.jai";
 #load "log.jai";
 #load "enums.jai";

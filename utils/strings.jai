@@ -86,6 +86,7 @@ for_expansion :: (str: *string, body: Code, flags: For_Flags) #expand {
 
 StringBuilder :: Basic.String_Builder;
 freeBuffers :: Basic.free_buffers;
+appendToBuilder :: Basic.append;
 printToBuilder :: Basic.print_to_builder;
 builderToString :: Basic.builder_to_string;
 

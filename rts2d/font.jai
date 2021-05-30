@@ -267,6 +267,58 @@ nvgMultiSpriteText :: (gfx: *NVGcontext, text: string, x: f32, y: f32, params: N
     nvgRestore(gfx);
 }
 
+nvgMeasureSingleSpriteText :: (text: string, params: NVGfontParams) -> Vec2 {
+    scale := params.fontSize / params.fontData.lineHeight;
+    size := VEC2_ZERO;
+
+    i: s32 = 0;
+    while (i < text.count) {
+        c := text[i];
+
+        if (c == #char "\0") {
+            break;
+        } else if (c == #char "\r") {
+            if (i + 1 >= text.count) {
+                break;
+            }
+            i += 1;
+            c = text[i];
+            assert(c == #char "\n");
+            size.x += params.fontData.advance * scale;
+        } else if (c == #char "\n") {
+            size.x += params.fontData.advance * scale;
+        } else if (c == #char "\t") {
+            rs := params.fontData.data[getCharIndex(#char " ")];
+            size.x += (TAB_WIDTH * rs.w + params.fontData.advance) * scale;
+        } else {
+            rs := params.fontData.data[getCharIndex(c)];
+            size.x += (rs.w + params.fontData.advance) * scale;
+            size.y = max(size.y, rs.h * scale);
+        }
+
+        i += 1;
+    }
+
+    return size;
+}
+
+nvgMeasureMultiSpriteText :: (text: string, width: f32, params: NVGfontParams) -> Vec2 {
+    scale := params.fontSize / params.fontData.lineHeight;
+    lineHeight := ifx params.lineHeight > 0 then params.lineHeight else params.fontData.lineHeight;
+
+    lines := createList(NVGtextSpan);
+    nvgSplitTextIntoLines(text, *lines, params.boundings.x, params);
+
+    size := VEC2_ZERO;
+
+    for line : lines {
+        size.x = max(size.x, line.width);
+        size.y += lineHeight * scale;
+    }
+
+    return size;
+}
+
 #scope_file
 
 #import "String";
@@ -444,58 +496,6 @@ nvgSplitTextIntoLines :: (text: string, lines: *List(NVGtextSpan), width: f32, p
             }
         }
     }
-}
-
-nvgMeasureSingleSpriteText :: (text: string, params: NVGfontParams) -> Vec2 {
-    scale := params.fontSize / params.fontData.lineHeight;
-    size := VEC2_ZERO;
-
-    i: s32 = 0;
-    while (i < text.count) {
-        c := text[i];
-
-        if (c == #char "\0") {
-            break;
-        } else if (c == #char "\r") {
-            if (i + 1 >= text.count) {
-                break;
-            }
-            i += 1;
-            c = text[i];
-            assert(c == #char "\n");
-            size.x += params.fontData.advance * scale;
-        } else if (c == #char "\n") {
-            size.x += params.fontData.advance * scale;
-        } else if (c == #char "\t") {
-            rs := params.fontData.data[getCharIndex(#char " ")];
-            size.x += (TAB_WIDTH * rs.w + params.fontData.advance) * scale;
-        } else {
-            rs := params.fontData.data[getCharIndex(c)];
-            size.x += (rs.w + params.fontData.advance) * scale;
-            size.y = max(size.y, rs.h * scale);
-        }
-
-        i += 1;
-    }
-
-    return size;
-}
-
-nvgMeasureMultiSpriteText :: (text: string, width: f32, params: NVGfontParams) -> Vec2 {
-    scale := params.fontSize / params.fontData.lineHeight;
-    lineHeight := ifx params.lineHeight > 0 then params.lineHeight else params.fontData.lineHeight;
-
-    lines := createList(NVGtextSpan);
-    nvgSplitTextIntoLines(text, *lines, params.boundings.x, params);
-
-    size := VEC2_ZERO;
-
-    for line : lines {
-        size.x = max(size.x, line.width);
-        size.y += lineHeight * scale;
-    }
-
-    return size;
 }
 
 nvgSingleSpriteTextSpan :: (gfx: *NVGcontext,

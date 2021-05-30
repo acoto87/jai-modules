@@ -17,6 +17,8 @@
 #load "entities.jai";
 #load "components.jai";
 #load "states.jai";
+#load "cheats.jai";
+#load "cheats_panel.jai";
 #load "scenes.jai";
 #load "players.jai";
 #load "ui.jai";

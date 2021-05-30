@@ -1,3 +1,94 @@
+initGame :: (windowTitle: string, originalWindowSize: Vec2i, globalScale: f32, globalSpeed: f32) -> bool {
+    ctx := context.gameContext;
+    assert(ctx != null);
+
+    assert(!isEmpty(windowTitle));
+    assert(originalWindowSize.x > 0 && originalWindowSize.y > 0);
+
+    if (globalScale <= 0) {
+        globalScale = 1;
+    }
+
+    if (globalSpeed <= 0) {
+        globalSpeed = 1;
+    }
+
+    glfwSetErrorCallback(glfwErrorCallback);
+
+    if (!glfwInit()) {
+        logError("Error initializing GLFW!\n");
+        return false;
+    }
+
+    glfwWindowHint(GLFW_RESIZABLE, 0);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+    // glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
+
+    ctx.globalScale = globalScale;
+    ctx.globalSpeed = globalSpeed;
+    ctx.originalWindowSize = originalWindowSize;
+    ctx.windowSize = ctx.originalWindowSize * ctx.globalScale;
+    ctx.windowTitle = windowTitle;
+    ctx.window = glfwCreateWindow(ctx.windowSize.x, ctx.windowSize.y, toCString(ctx.windowTitle, tempAllocator), null, null);
+    ctx.transitionDelay = 0;
+    ctx.cheatsEnabled = true;
+
+    // pthread_mutex_init(&ctx.__mutex, NULL);
+
+    if (!ctx.window) {
+        logError("GLFW window could not be created!\n");
+        glfwTerminate();
+        return false;
+    }
+
+    glfwSetWindowUserPointer(ctx.window, ctx);
+    glfwSetCharCallback(ctx.window, inputCharCallback);
+
+    glfwGetWindowSize(ctx.window, *ctx.windowSize.x, *ctx.windowSize.y);
+    glfwGetFramebufferSize(ctx.window, *ctx.framebufferSize.x, *ctx.framebufferSize.y);
+    ctx.devicePixelRatio = cast(f32) ctx.framebufferSize.x / cast(f32) ctx.windowSize.x;
+
+    glfwMakeContextCurrent(ctx.window);
+
+    glfwSetInputMode(ctx.window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+
+    glLoad(glfwGetProcAddress);
+
+    glCheckOpenGLVersion();
+
+    // init graphics
+    ctx.gfx = nvgCreateGL2(NVGcreateFlags.NVG_STENCIL_STROKES | .NVG_DEBUG);
+    if (ctx.gfx == null) {
+        logError("Could not init nanovg.\n");
+        glfwDestroyWindow(ctx.window);
+        glfwTerminate();
+        return false;
+    }
+
+    // init audio
+    // if (!initAudio(context))
+    // {
+    //     logError("Could not initialize audio.\n");
+    //     return false;
+    // }
+
+    glViewport(0, 0, cast(u32) ctx.framebufferSize.x, cast(u32) ctx.framebufferSize.y);
+    glClearColor(0, 0, 0, 1.0);
+
+    ctx.time = cast(f32) glfwGetTime();
+    return true;
+}
+
+uninitGame :: () {
+    ctx := context.gameContext;
+    assert(ctx != null);
+
+    nvgDeleteGL2(ctx.gfx);
+    glfwDestroyWindow(ctx.window);
+    glfwTerminate();
+}
+
 updateGame :: () {
     ctx := context.gameContext;
     assert(ctx != null);
@@ -80,4 +171,26 @@ presentGame :: () {
 
     ctx.time = currentTime;
     ctx.fps = cast(u32) (1.0 / ctx.deltaTime);
+}
+
+#scope_file
+
+glfwErrorCallback :: (error: s32, description: *u8) #c_call {
+    newContext: Context;
+    push_context newContext {
+        loggerData := LoggerData.{};
+        initLogger(*loggerData);
+
+        logError("Error: %\n", toString(description));
+    }
+}
+
+inputCharCallback :: (window: *GLFWwindow, codepoint: u32) #c_call {
+    ctx := cast(*GameContext) glfwGetWindowUserPointer(window);
+
+    newContext: Context;
+    newContext.gameContext = ctx;
+    push_context newContext {
+        keyPressCheatsPanel(codepoint);
+    }
 }
