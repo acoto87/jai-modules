@@ -27,12 +27,16 @@ initGame :: (windowTitle: string, originalWindowSize: Vec2i, globalScale: f32, g
 
     ctx.globalScale = globalScale;
     ctx.globalSpeed = globalSpeed;
+    ctx.musicEnabled = true;
+    ctx.soundEnabled = true;
+    ctx.musicVolume = 1;
+    ctx.soundVolume = 1;
+    ctx.cheatsEnabled = false;
     ctx.originalWindowSize = originalWindowSize;
     ctx.windowSize = ctx.originalWindowSize * ctx.globalScale;
     ctx.windowTitle = windowTitle;
     ctx.window = glfwCreateWindow(ctx.windowSize.x, ctx.windowSize.y, toCString(ctx.windowTitle, tempAllocator), null, null);
     ctx.transitionDelay = 0;
-    ctx.cheatsEnabled = true;
 
     // pthread_mutex_init(&ctx.__mutex, NULL);
 

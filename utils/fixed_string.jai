@@ -14,7 +14,7 @@ createFixedString :: (length: s64) -> FixedString {
     return fstr;
 }
 
-appendr :: inline (fstr: *FixedString, c: u8) {
+append :: inline (fstr: *FixedString, c: u8) {
     insertAt(fstr, fstr.count, c);
 }
 
@@ -30,6 +30,8 @@ insertAt :: inline (fstr: *FixedString, index: s64, c: u8) {
     memoryMove(fstr.data + index + 1, fstr.data + index, fstr.count - index);
     fstr.data[index] = c;
     fstr.count += 1;
+
+    setLastCharToZero(fstr);
 }
 
 insertAt :: inline (fstr: *FixedString, index: s64, str: string) {
@@ -40,6 +42,8 @@ insertAt :: inline (fstr: *FixedString, index: s64, str: string) {
     memoryMove(fstr.data + index + str.count, fstr.data + index, fstr.count - index - str.count + 1);
     memoryCopy(fstr.data + index, str.data, str.count);
     fstr.count += str.count;
+
+    setLastCharToZero(fstr);
 }
 
 removeAt :: inline (fstr: *FixedString, index: s64, count: s64 = 1) {
@@ -50,6 +54,8 @@ removeAt :: inline (fstr: *FixedString, index: s64, count: s64 = 1) {
 
     memoryMove(fstr.data + index, fstr.data + index + count, fstr.count - index - count);
     fstr.count -= count;
+
+    setLastCharToZero(fstr);
 }
 
 clear :: inline (fstr: *FixedString) {
@@ -57,6 +63,8 @@ clear :: inline (fstr: *FixedString) {
 
     memorySet(fstr.data, 0, fstr.count);
     fstr.count = 0;
+
+    setLastCharToZero(fstr);
 }
 
 hasEnoughFor :: inline (fstr: *FixedString, count: s64) -> bool {
@@ -72,4 +80,12 @@ toString :: inline (fstr: *FixedString) -> string {
     str.data = alloc(u8, fstr.count);
     memoryCopy(str.data, fstr.data, fstr.count);
     return str;
+}
+
+#scope_file
+
+setLastCharToZero :: inline (fstr: *FixedString) {
+    if (fstr.count < fstr.capacity) {
+        fstr.data[fstr.count] = #char "\0";
+    }
 }

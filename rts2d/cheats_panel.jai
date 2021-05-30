@@ -17,7 +17,7 @@ setCheatsFeedback :: inline (feedbackText: string) {
 }
 
 setCheatsFeedbackFormat :: inline (feedbackTextFormat: string, args: ..Any) {
-    feedbackTextInternal := sprint(feedbackTextFormat, args);
+    feedbackTextInternal := sprint(feedbackTextFormat, ..args);
     setCheatsFeedbackInternal(feedbackTextInternal);
 }
 

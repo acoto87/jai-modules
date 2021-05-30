@@ -7,6 +7,12 @@ GameContext :: struct {
 
     globalScale: f32;
     globalSpeed: f32;
+    musicEnabled: bool;
+    soundEnabled: bool;
+    musicVolume: f32;
+    soundVolume: f32;
+
+    cheatsEnabled: bool;
 
     originalWindowSize: Vec2i;
     windowSize: Vec2i;
@@ -21,8 +27,6 @@ GameContext :: struct {
 
     // ma_device sfx;
     // tsf* soundFont;
-
-    cheatsEnabled: bool;
 
     // // this is a mutex used to make the deletion of the entities thread-safe
     // // since the audio thread will delete audio entities, that could lead
@@ -169,22 +173,34 @@ getScaledTime :: inline (t: f32) -> f32 {
     return t;
 }
 
-// setMusicVolume :: (ctx: *WarContext, volume: f32) {
-//     ctx.musicVolume = clamp(volume, 0.0, 1.0);
-//     logDebug("set music volume to: %\n", ctx.musicVolume);
-// }
+setMusicVolume :: inline (volume: f32) {
+    ctx := context.gameContext;
+    assert(ctx != null);
 
-// changeMusicVolume :: (ctx: *WarContext, deltaVolume: f32) {
-//     setMusicVolume(ctx.musicVolume + deltaVolume);
-// }
+    ctx.musicVolume = clamp(volume, 0.0, 1.0);
+    logDebug("set music volume to: %\n", ctx.musicVolume);
+}
 
-// setSoundVolume :: (ctx: *WarContext, volume: f32) {
-//     ctx.soundVolume = clamp(volume, 0.0, 1.0);
-//     logDebug("set sound volume to: %\n", ctx.soundVolume);
-// }
+changeMusicVolume :: inline (deltaVolume: f32) {
+    ctx := context.gameContext;
+    assert(ctx != null);
 
-// changeSoundVolume :: (ctx: *WarContext, deltaVolume: f32) {
-//     setSoundVolume(ctx.soundVolume + deltaVolume);
-// }
+    setMusicVolume(ctx.musicVolume + deltaVolume);
+}
+
+setSoundVolume :: inline (volume: f32) {
+    ctx := context.gameContext;
+    assert(ctx != null);
+
+    ctx.soundVolume = clamp(volume, 0.0, 1.0);
+    logDebug("set sound volume to: %\n", ctx.soundVolume);
+}
+
+changeSoundVolume :: inline (deltaVolume: f32) {
+    ctx := context.gameContext;
+    assert(ctx != null);
+
+    setSoundVolume(ctx.soundVolume + deltaVolume);
+}
 
 #scope_file

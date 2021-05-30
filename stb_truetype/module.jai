@@ -76,8 +76,11 @@ build :: (dll: bool = true, lib: bool = true) {
 
 #scope_file
 
-#import "BuildCpp";
-#import "Basic";
+BuildCpp :: #import "BuildCpp";
+build_cpp_dynamic_lib :: BuildCpp.build_cpp_dynamic_lib;
+
+Basic :: #import "Basic";
+print :: Basic.print;
 
 #if OS == .WINDOWS {
 	stb_truetype :: #foreign_library "win/stb_truetype";

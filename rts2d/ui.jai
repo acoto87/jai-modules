@@ -23,7 +23,7 @@ setUIText :: (entity: *Entity, str: string) {
 }
 
 setUITextFormat :: (entity: *Entity, format: string, args: ..Any) {
-    text := sprint(format, args);
+    text := sprint(format, ..args);
     setUIText(entity, text);
 }
 
