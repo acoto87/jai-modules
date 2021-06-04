@@ -43,6 +43,13 @@ setUIRectWidth :: (entity: *Entity, width: s32) {
     rect.enabled = width > 0;
 }
 
+setUIRectColor :: (entity: *Entity, color: Color) {
+    rect := getComponent(entity, RectComponent);
+    assert(rect != null);
+
+    rect.color = color;
+}
+
 clearUITooltip :: (entity: *Entity) {
     button := getComponent(entity, ButtonComponent);
     assert(button != null);
@@ -355,8 +362,7 @@ updateUICursor :: () {
 }
 
 renderUIEntities :: () {
-    entities := getUIEntities();
-    for entity : entities {
+    for entity : getUIEntities() {
         renderEntity(entity);
     }
 }

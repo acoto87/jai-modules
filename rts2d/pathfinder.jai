@@ -104,6 +104,12 @@ initPathFinder :: (type: PathFindingType, width: s32, height: s32, data: [] u16)
     return finder;
 }
 
+freePathFinder :: (finder: PathFinder) {
+    if (finder.data != null) {
+        free(finder.data);
+    }
+}
+
 isInside :: inline (finder: PathFinder, position: Vec2i) -> bool {
     return position.x >= 0 && position.x < finder.with &&
            position.y >= 0 && position.y < finder.height;

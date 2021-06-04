@@ -1,14 +1,3 @@
-CheatsPanel :: struct {
-    enabled: bool;
-    visible: bool;
-    position: s32;
-    prefix: string;
-    text: FixedString;
-    feedback: bool;
-    feedbackTime: f32;
-    feedbackText: string;
-}
-
 CheatId :: u16;
 CheatFunc :: #type (arguments: string);
 
@@ -88,16 +77,6 @@ applyCheat :: (text: string) {
     }
 }
 
-cheatsEnabledAndVisible :: inline () -> bool {
-    ctx := context.gameContext;
-    assert(ctx != null);
-
-    scene := ctx.scene;
-    assert(scene != null);
-
-    return scene.cheatsPanel.enabled && scene.cheatsPanel.visible;
-}
-
 registerBuiltInCheats :: () {
     for desc : builtInCheatDescriptors {
         registerCheat(desc.id, desc);
@@ -135,10 +114,10 @@ applyMusicCheat :: (arguments: string) {
 
     if (equal_nocase(arguments, "on")) {
         ctx.musicEnabled = true;
-        setCheatsFeedback("Music on");
+        setFlashText("Music on");
     } else if (equal_nocase(arguments, "off")) {
         ctx.musicEnabled = false;
-        setCheatsFeedback("Music off");
+        setFlashText("Music off");
     }
 }
 
@@ -152,10 +131,10 @@ applySoundCheat :: (arguments: string) {
 
     if (equal_nocase(arguments, "on")) {
         ctx.soundEnabled = true;
-        setCheatsFeedback("Sounds on");
+        setFlashText("Sounds on");
     } else if (equal_nocase(arguments, "off")) {
         ctx.soundEnabled = false;
-        setCheatsFeedback("Sounds off");
+        setFlashText("Sounds off");
     }
 }
 
@@ -185,7 +164,7 @@ applyMusicVolCheat :: (arguments: string) {
         ctx.musicEnabled = true;
 
         setMusicVolume(cast(f32) musicVol / 100);
-        setCheatsFeedbackFormat("Music volume set to %", musicVol);
+        setFlashTextFormat("Music volume set to %", musicVol);
     }
 }
 
@@ -215,7 +194,7 @@ applySoundVolCheat :: (arguments: string) {
         ctx.soundEnabled = true;
 
         setSoundVolume(cast(f32) sfxVol / 100);
-        setCheatsFeedbackFormat("Sounds volume set to %", sfxVol);
+        setFlashTextFormat("Sounds volume set to %", sfxVol);
     }
 }
 
@@ -231,7 +210,7 @@ applyGlobalScaleCheat :: (arguments: string) {
     if (success) {
         scale = clamp(scale, 1, 5);
         setGlobalScale(cast(f32) scale);
-        setCheatsFeedbackFormat("Global scale set to %", scale);
+        setFlashTextFormat("Global scale set to %", scale);
     }
 }
 
@@ -247,6 +226,6 @@ applyGlobalSpeedCheat :: (arguments: string) {
     if (success) {
         speed = clamp(speed, 1, 5);
         setGlobalSpeed(cast(f32) speed);
-        setCheatsFeedbackFormat("Global speed set to %", speed);
+        setFlashTextFormat("Global speed set to %", speed);
     }
 }

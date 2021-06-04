@@ -2526,7 +2526,7 @@ nvg__roundJoin :: (
         a0 := atan2f(-dly0, -dlx0);
         a1 := atan2f(-dly1, -dlx1);
         if (a1 > a0) {
-            a1 -= NVG_PI * 2;
+            a1 -= cast(f32) (NVG_PI * 2);
         }
 
         nvg__vset(dst, lx0, ly0, lu,1);
@@ -2557,7 +2557,7 @@ nvg__roundJoin :: (
         a0 := atan2f(dly0, dlx0);
         a1 := atan2f(dly1, dlx1);
         if (a1 < a0) {
-            a1 += NVG_PI * 2;
+            a1 += cast(f32) (NVG_PI * 2);
         }
 
         nvg__vset(dst, p1.x + dlx0 * rw, p1.y + dly0 * rw, lu,1);

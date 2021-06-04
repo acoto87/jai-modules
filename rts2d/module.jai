@@ -19,6 +19,7 @@
 #load "states.jai";
 #load "cheats.jai";
 #load "cheats_panel.jai";
+#load "flash_text.jai";
 #load "scenes.jai";
 #load "players.jai";
 #load "ui.jai";

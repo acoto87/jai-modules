@@ -10,6 +10,7 @@ Scene :: struct {
     componentsManager: ComponentsManager;
     cheatsManager: CheatsManager;
     cheatsPanel: CheatsPanel;
+    flashText: FlashText;
 
     enterSceneFn: SceneFn;
     leaveSceneFn: SceneFn;
@@ -88,7 +89,8 @@ updateScene :: () {
         ctx.scene.updateSceneFn();
     } else {
         updateCheatsPanel();
-        updateUIButtons(!cheatsEnabledAndVisible());
+        updateFlashText(isCheatsPanelVisible());
+        updateUIButtons(!isCheatsPanelVisible());
         updateUICursor();
         updateAnimations();
     }

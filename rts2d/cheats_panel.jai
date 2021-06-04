@@ -1,27 +1,30 @@
-setCheatsPanelVisible :: (visible: bool) {
-    ctx := context.gameContext;
-    assert(ctx != null);
-
-    scene := ctx.scene;
-    assert(scene != null);
-
-    cheatsPanel := *scene.cheatsPanel;
-    cheatsPanel.visible = visible;
-    cheatsPanel.position = 0;
-    clear(*cheatsPanel.text);
+CheatsPanel :: struct {
+    enabled: bool;
+    visible: bool;
+    position: s32;
+    prefix: string;
+    text: FixedString;
+    panelUIName: string;
+    textUIName: string;
+    cursorUIName: string;
 }
 
-setCheatsFeedback :: inline (feedbackText: string) {
-    feedbackTextInternal := allocString(feedbackText);
-    setCheatsFeedbackInternal(feedbackTextInternal);
+CheatPanelOptions :: struct {
+    panelUIName: string = "panelCheat";
+    panelBackgroundColor: Color = COLOR_TRANSPARENT;
+    panelRect: Rect;
+    textUIName: string = "txtCheat";
+    textUIOffset: Vec2;
+    textUIColor: Color = COLOR_WHITE;
+    textUIFontIndex: s32 = 0;
+    textUIFontSize: f32 = 6;
+    textUIMaxLength: s32 = CHEAT_TEXT_MAX_LENGTH;
+    cursorUIName: string = "cursorCheat";
+    cursorUIOffset: Vec2;
+    prefix: string = "";
 }
 
-setCheatsFeedbackFormat :: inline (feedbackTextFormat: string, args: ..Any) {
-    feedbackTextInternal := sprint(feedbackTextFormat, ..args);
-    setCheatsFeedbackInternal(feedbackTextInternal);
-}
-
-initCheatsPanel :: (prefix: string = "") {
+initCheatsPanel :: (options: CheatPanelOptions) {
     ctx := context.gameContext;
     assert(ctx != null);
 
@@ -32,41 +35,27 @@ initCheatsPanel :: (prefix: string = "") {
     cheatsPanel.enabled = true;
     cheatsPanel.visible = false;
     cheatsPanel.position = 0;
-    cheatsPanel.prefix = prefix;
-    cheatsPanel.text = createFixedString(CHEAT_TEXT_MAX_LENGTH);
+    cheatsPanel.prefix = options.prefix;
+    cheatsPanel.text = createFixedString(options.textUIMaxLength);
+    cheatsPanel.panelUIName = options.panelUIName;
+    cheatsPanel.textUIName = options.textUIName;
+    cheatsPanel.cursorUIName = options.cursorUIName;
 
     uiEntity: *Entity;
 
-    cheatSize := vec2(ctx.originalWindowSize.x, 12);
-    cheatBackgroundColor := rgba(100, 100, 100, 160);
-    uiEntity = createUIRect("panelCheat", VEC2_ZERO, cheatSize, cheatBackgroundColor);
+    panelPosition := getTopLeft(options.panelRect);
+    panelSize := getSize(options.panelRect);
+    uiEntity = createUIRect(options.panelUIName, panelPosition, panelSize, options.panelBackgroundColor);
     setUIEntityStatus(uiEntity, false);
 
-    uiEntity = createUIText("txtCheat", 0, 6, "", vec2(2, 4));
+    textUIPosition := panelPosition + options.textUIOffset;
+    uiEntity = createUIText(options.textUIName, options.textUIFontIndex, options.textUIFontSize, "", textUIPosition);
+    setUITextColor(uiEntity, options.textUIColor);
     setUIEntityStatus(uiEntity, false);
 
-    uiEntity = createUIRect("cursorCheat", vec2(2, 3), vec2(1, 7), COLOR_WHITE);
+    cursorUIPosition := panelPosition + options.cursorUIOffset;
+    uiEntity = createUIRect(options.cursorUIName, cursorUIPosition, vec2(1, 7), COLOR_WHITE);
     setUIEntityStatus(uiEntity, false);
-
-    uiEntity = createUIText("txtCheatFeedbackText", 1, 8, "", vec2(10, 20));
-    setUITextColor(uiEntity, COLOR_YELLOW);
-    setUIEntityStatus(uiEntity, false);
-}
-
-keyPressCheatsPanel :: (codepoint: u32) {
-    ctx := context.gameContext;
-    assert(ctx != null);
-
-    scene := ctx.scene;
-    assert(scene != null);
-
-    cheatsPanel := *scene.cheatsPanel;
-    if (cheatsPanel.enabled && cheatsPanel.visible) {
-        if (hasEnoughFor(*cheatsPanel.text, 1)) {
-            insertAt(*cheatsPanel.text, cheatsPanel.position, cast(u8) codepoint);
-            cheatsPanel.position += 1;
-        }
-    }
 }
 
 updateCheatsPanel :: () {
@@ -81,30 +70,14 @@ updateCheatsPanel :: () {
         return;
     }
 
-    panelEntity := findUIEntity("panelCheat");
+    panelEntity := findUIEntity(cheatsPanel.panelUIName);
     assert(panelEntity != null);
 
-    cursorEntity := findUIEntity("cursorCheat");
-    assert(cursorEntity != null);
-
-    textEntity := findUIEntity("txtCheat");
+    textEntity := findUIEntity(cheatsPanel.textUIName);
     assert(textEntity != null);
 
-    feedbackText := findUIEntity("txtCheatFeedbackText");
-    assert(feedbackText != null);
-
-    if (cheatsPanel.feedback) {
-        setUIEntityStatus(feedbackText, true);
-        setUIText(feedbackText, cheatsPanel.feedbackText);
-
-        cheatsPanel.feedbackTime -= ctx.deltaTime;
-        if (cheatsPanel.feedbackTime <= 0) {
-            cheatsPanel.feedbackTime = 0;
-            cheatsPanel.feedback = false;
-        }
-    } else {
-        setUIEntityStatus(feedbackText, false);
-    }
+    cursorEntity := findUIEntity(cheatsPanel.cursorUIName);
+    assert(cursorEntity != null);
 
     if (cheatsPanel.visible) {
         if (wasKeyPressed(Keys.Esc)) {
@@ -146,11 +119,11 @@ updateCheatsPanel :: () {
             cheatsPanel.position = cast(s32) cheatsPanel.text.count;
         }
 
-        statusText := getStatusText(cheatsPanel);
+        statusText := getCheatsText(cheatsPanel);
         defer free(statusText);
 
         setUITextFormat(textEntity, statusText);
-        setCursorPosition(cheatsPanel, cursorEntity, textEntity, statusText);
+        setCheatCursorPosition(cheatsPanel, panelEntity, cursorEntity, textEntity, statusText);
 
         setUIEntityStatus(panelEntity, true);
         setUIEntityStatus(cursorEntity, true);
@@ -166,9 +139,17 @@ updateCheatsPanel :: () {
     }
 }
 
-#scope_file
+isCheatsPanelVisible :: inline () -> bool {
+    ctx := context.gameContext;
+    assert(ctx != null);
 
-setCheatsFeedbackInternal :: (feedbackText: string) {
+    scene := ctx.scene;
+    assert(scene != null);
+
+    return scene.cheatsPanel.enabled && scene.cheatsPanel.visible;
+}
+
+keyPressCheatsPanel :: (codepoint: u32) {
     ctx := context.gameContext;
     assert(ctx != null);
 
@@ -176,31 +157,41 @@ setCheatsFeedbackInternal :: (feedbackText: string) {
     assert(scene != null);
 
     cheatsPanel := *scene.cheatsPanel;
-    if (!isEmpty(feedbackText)) {
-        cheatsPanel.feedback = true;
-        cheatsPanel.feedbackTime = 3.0;
-
-        if (!isEmpty(cheatsPanel.feedbackText)) {
-            free(cheatsPanel.feedbackText);
+    if (cheatsPanel.enabled && cheatsPanel.visible) {
+        if (hasEnoughFor(*cheatsPanel.text, 1)) {
+            insertAt(*cheatsPanel.text, cheatsPanel.position, cast(u8) codepoint);
+            cheatsPanel.position += 1;
         }
-
-        cheatsPanel.feedbackText = feedbackText;
-    } else {
-        cheatsPanel.feedback = false;
     }
 }
 
-getStatusText :: (cheatsPanel: *CheatsPanel) -> string {
-    statusTextBuilder: StringBuilder;
-    if (!isEmpty(cheatsPanel.prefix)) {
-        appendToBuilder(*statusTextBuilder, cheatsPanel.prefix);
-    }
-    appendToBuilder(*statusTextBuilder, cheatsPanel.text.data, cheatsPanel.text.count);
-    return builderToString(*statusTextBuilder);
-}
+#scope_file
 
-setCursorPosition :: (cheatsPanel: *CheatsPanel, cursorEntity: *Entity, textEntity: *Entity, statusText: string) {
+setCheatsPanelVisible :: (visible: bool) {
     ctx := context.gameContext;
+    scene := ctx.scene;
+
+    cheatsPanel := *scene.cheatsPanel;
+    cheatsPanel.visible = visible;
+    cheatsPanel.position = 0;
+    clear(*cheatsPanel.text);
+}
+
+getCheatsText :: (cheatsPanel: *CheatsPanel) -> string {
+    cheatTextBuilder: StringBuilder;
+    if (!isEmpty(cheatsPanel.prefix)) {
+        appendToBuilder(*cheatTextBuilder, cheatsPanel.prefix);
+    }
+    appendToBuilder(*cheatTextBuilder, cheatsPanel.text.data, cheatsPanel.text.count);
+    return builderToString(*cheatTextBuilder);
+}
+
+setCheatCursorPosition :: (cheatsPanel: *CheatsPanel, panelEntity: *Entity, cursorEntity: *Entity, textEntity: *Entity, statusText: string) {
+    ctx := context.gameContext;
+    assert(ctx != null);
+
+    panelTransform := getComponent(panelEntity, TransformComponent);
+    assert(panelTransform != null);
 
     textComponent := getComponent(textEntity, TextComponent);
     assert(textComponent != null);
@@ -214,5 +205,5 @@ setCursorPosition :: (cheatsPanel: *CheatsPanel, cursorEntity: *Entity, textEnti
 
     statusTextUpToCursor := slice(statusText, 0, cheatsPanel.prefix.count + cheatsPanel.position);
     statusTextUpToCursorSize := nvgMeasureSingleSpriteText(statusTextUpToCursor, params);
-    transformComponent.position.x = statusTextUpToCursorSize.x;
+    transformComponent.position.x = panelTransform.position.x + statusTextUpToCursorSize.x;
 }

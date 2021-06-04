@@ -256,6 +256,20 @@ wasKeyPressed :: inline (key: Keys) -> bool {
     return ctx.input.keys[cast(s32) key].wasPressed;
 }
 
+isDragging :: inline () -> bool {
+    ctx := context.gameContext;
+    assert(ctx != null);
+
+    return ctx.input.isDragging;
+}
+
+getDragRect :: inline () -> Rect {
+    ctx := context.gameContext;
+    assert(ctx != null);
+
+    return rectp(ctx.input.dragPos.x, ctx.input.dragPos.y, ctx.input.pos.x, ctx.input.pos.y);
+}
+
 #scope_file
 
 setInputButton :: (button: MouseButtons, pressed: bool) {

@@ -98,15 +98,19 @@ allocString :: inline (str: string, allocator: Allocator = null) -> string {
 allocString :: (length: s64, initStr: string = "", allocator: Allocator = null) -> string {
     assert(length >= 0);
 
-    items := alloc(u8, length, allocator);
+    if (length == 0) {
+        return "";
+    }
 
-    if (initStr.count > 0 && initStr.data != null) {
-        memoryCopy(items, initStr.data, min(length, initStr.count));
+    data := alloc(u8, length, allocator);
+
+    if (!isEmpty(initStr)) {
+        memoryCopy(data, initStr.data, min(length, initStr.count));
     }
 
     str: string = ---;
     str.count = length;
-    str.data = items;
+    str.data = data;
 
     return str;
 }
