@@ -17,8 +17,6 @@
 //    misrepresented as being the original software.
 // 3. This notice may not be removed or altered from any source distribution.
 //
-// stack-jai is a library written in Jai.
-//
 // It defines a strongly-typed hash map of elements and its operations.
 //
 HashMap :: struct(TKey: Type, TValue: Type) {

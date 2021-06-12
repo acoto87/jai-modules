@@ -18,61 +18,55 @@
 // 3. This notice may not be removed or altered from any source distribution.
 //
 // It defines a strongly-typed stack of elements and its operations.
+// This is not a resizable stack but a fixed length stack that can be stack-allocated.
 //
-Stack :: struct(TItem: Type) {
+SmallStack :: struct(TItem: Type, length: s64) {
     count: s64;
     capacity: s64;
-    allocator: Allocator;
-    freeItems: bool;
-    items: *TItem;
-}
-
-StackOptions :: struct(TItem: Type) {
-    capacity: s64 = 8;
     freeItems: bool;
     allocator: Allocator;
+    items: [length] TItem;
 }
 
-createStack :: inline ($T: Type) -> Stack(T) {
-    stack: Stack(T);
+SmallStackOptions :: struct(TItem: Type, length: s64) {
+    freeItems: bool;
+    allocator: Allocator;
+}
+
+createSmallStack :: inline ($T: Type, $length: s64) -> SmallStack(T, length) {
+    stack: SmallStack(T, length);
     init(*stack);
     return stack;
 }
 
-createStack :: inline ($T: Type, options: StackOptions(T)) -> Stack(T) {
-    stack: Stack(T);
+createSmallStack :: inline ($T: Type, $length: s64, options: SmallStackOptions(T, length)) -> SmallStack(T, length) {
+    stack: SmallStack(T, length);
     init(*stack, options);
     return stack;
 }
 
-init :: inline (stack: *$T/Stack) {
-    init(stack, StackOptions(T.TItem).{});
+init :: inline (stack: *$T/SmallStack) {
+    #assert(T.length > 0);
+    init(stack, StackOptions(T.TItem, T.length).{});
 }
 
-init :: (stack: *$T/Stack, options: StackOptions(T.TItem)) {
-    assert(options.capacity > 0);
+init :: inline (stack: *$T/SmallStack, options: SmallStackOptions(T.TItem, T.length)) {
+    #assert(T.length > 0);
 
     stack.count = 0;
-    stack.capacity = options.capacity;
+    stack.capacity = T.length;
     stack.freeItems = options.freeItems;
-    stack.allocator = options.allocator;
-    stack.items = alloc(T.TItem, stack.capacity, stack.allocator, initialized = false);
 }
 
-uninit :: (stack: *$T/Stack, freeStack: bool = false) {
-    if (stack.items) {
-        clear(stack);
-        free(stack.items, stack.allocator);
-    }
+uninit :: (stack: *$T/SmallStack, freeStack: bool = false) {
+    clear(stack);
 
     if (freeStack) {
         free(stack, stack.allocator);
     }
 }
 
-clear :: (stack: *$T/Stack) {
-    assert(stack.items != null);
-
+clear :: (stack: *$T/SmallStack) {
     #insert #run () -> string {
         info := type_info(T.TItem);
 
@@ -92,19 +86,13 @@ clear :: (stack: *$T/Stack) {
     stack.count = 0;
 }
 
-push :: (stack: *$T/Stack, item: T.TItem) {
-    assert(stack.items != null);
-
-    if (stack.count == stack.capacity) {
-        resize(stack);
-    }
-
+push :: (stack: *$T/SmallStack, item: T.TItem) {
+    assert(stack.count < stack.capacity);
     stack.items[stack.count] = item;
     stack.count += 1;
 }
 
-pop :: (stack: *$T/Stack) -> T.TItem {
-    assert(stack.items != null);
+pop :: (stack: *$T/SmallStack) -> T.TItem {
     assert(stack.count > 0);
 
     item := stack.items[stack.count - 1];
@@ -112,18 +100,14 @@ pop :: (stack: *$T/Stack) -> T.TItem {
     return item;
 }
 
-peek :: inline (stack: *$T/Stack) -> T.TItem {
-    assert(stack.items != null);
+peek :: inline (stack: *$T/SmallStack) -> T.TItem {
     assert(stack.count > 0);
-
     return stack.items[stack.count - 1];
 }
 
-indexOf :: (stack: *$T/Stack, item: T.TItem) -> s64 {
-    assert(stack.items != null);
-
+indexOf :: (stack: *$T/SmallStack, item: T.TItem) -> s64 {
     for i : 0..stack.count-1 {
-        if (stack.items[i] == item) {
+        if (stack.items[stack.count - i - 1] == item) {
             return i;
         }
     }
@@ -131,12 +115,11 @@ indexOf :: (stack: *$T/Stack, item: T.TItem) -> s64 {
     return -1;
 }
 
-indexOf :: (stack: *$T/Stack, item: T.TItem, equalsFn: (T.TItem, T.TItem) -> bool) -> s64 {
-    assert(stack.items != null);
+indexOf :: (stack: *$T/SmallStack, item: T.TItem, equalsFn: (T.TItem, T.TItem) -> bool) -> s64 {
     assert(equalsFn != null);
 
     for i : 0..stack.count-1 {
-        if (equalsFn(stack.items[i], item)) {
+        if (equalsFn(stack.items[stack.count - i - 1], item)) {
             return i;
         }
     }
@@ -144,38 +127,27 @@ indexOf :: (stack: *$T/Stack, item: T.TItem, equalsFn: (T.TItem, T.TItem) -> boo
     return -1;
 }
 
-contains :: inline (stack: *$T/Stack, item: T.TItem) -> bool {
+contains :: inline (stack: *$T/SmallStack, item: T.TItem) -> bool {
     return indexOf(stack, item) >= 0;
 }
 
-contains :: inline (stack: *$T/Stack, item: T.TItem, equalsFn: (T.TItem, T.TItem) -> bool) -> bool {
+contains :: inline (stack: *$T/SmallStack, item: T.TItem, equalsFn: (T.TItem, T.TItem) -> bool) -> bool {
     return indexOf(stack, item, equalsFn) >= 0;
 }
 
-for_expansion :: (stack: *$T/Stack, body: Code, flags: For_Flags) #expand {
+for_expansion :: (stack: *$T/SmallStack, body: Code, flags: For_Flags) #expand {
     #assert(!(flags & .REVERSE));
 
     index := 0;
     while (index < stack.count) {
         #if flags & .POINTER {
-            `it := *stack.items[index];
+            `it := *stack.items[stack.count - index - 1];
         } else {
-            `it := stack.items[index];
+            `it := stack.items[stack.count - index - 1];
         }
         `it_index := index;
 
         #insert (remove=assert(false)) body;
         index += 1;
     }
-}
-
-#scope_file
-
-#import "utils";
-
-resize :: (stack: *$T/Stack) {
-    oldCapacity := stack.capacity;
-
-    stack.capacity = oldCapacity * 2;
-    stack.items = realloc(stack.items, stack.capacity, oldCapacity, stack.allocator);
 }

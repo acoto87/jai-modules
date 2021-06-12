@@ -19,60 +19,51 @@
 //
 // It defines a strongly-typed list of elements and its operations.
 //
-List :: struct(TItem: Type) {
+SmallList :: struct(TItem: Type, length: s64) {
     count: s64;
     capacity: s64;
     freeItems: bool;
     allocator: Allocator;
-    items: *TItem;
+    items: [length] TItem;
 }
 
-ListOptions :: struct(TItem: Type) {
-    capacity: s64 = 8;
+SmallListOptions :: struct(TItem: Type, length: s64) {
     freeItems: bool;
     allocator: Allocator;
 }
 
-createList :: inline ($T: Type) -> List(T) {
-    list: List(T);
+createList :: inline ($T: Type, $length: s64) -> SmallList(T, length) {
+    list: SmallList(T, length);
     init(*list);
     return list;
 }
 
-createList :: inline ($T: Type, options: ListOptions(T)) -> List(T) {
-    list: List(T);
+createList :: inline ($T: Type, $length: s64, options: SmallListOptions(T, length)) -> SmallList(T, length) {
+    list: SmallList(T, length);
     init(*list, options);
     return list;
 }
 
-init :: inline (list: *$T/List) {
-    init(list, ListOptions(T.TItem).{});
+init :: inline (list: *$T/SmallList) {
+    init(list, SmallListOptions(T.TItem, T.length).{});
 }
 
-init :: (list: *$T/List, options: ListOptions(T.TItem)) {
-    assert(options.capacity > 0);
-
+init :: (list: *$T/SmallList, options: SmallListOptions(T.TItem, T.length)) {
     list.count = 0;
-    list.capacity = options.capacity;
+    list.capacity = T.length;
     list.freeItems = options.freeItems;
     list.allocator = options.allocator;
-    list.items = alloc(T.TItem, list.capacity, list.allocator, initialized = false);
 }
 
-uninit :: (list: *$T/List, freeList: bool = false) {
-    if (list.items) {
-        clear(list);
-        free(list.items, list.allocator);
-    }
+uninit :: (list: *$T/SmallList, freeList: bool = false) {
+    clear(list);
 
     if (freeList) {
         free(list, list.allocator);
     }
 }
 
-clear :: (list: *$T/List) {
-    assert(list.items != null);
-
+clear :: (list: *$T/SmallList) {
     #insert #run () -> string {
         info := type_info(T.TItem);
 
@@ -92,106 +83,69 @@ clear :: (list: *$T/List) {
     list.count = 0;
 }
 
-add :: inline (list: *$T/List, item: T.TItem) {
+add :: inline (list: *$T/SmallList, item: T.TItem) {
+    assert(list.count < list.capacity);
     insert(list, list.count, item);
 }
 
-addNew :: inline (list: *$T/List) -> *T.TItem {
+addNew :: inline (list: *$T/SmallList) -> *T.TItem {
+    assert(list.count < list.capacity);
     return insertNew(list, list.count);
 }
 
-addRange :: inline (list: *$T/List, items: ..T.TItem) {
+addRange :: inline (list: *$T/SmallList, items: ..T.TItem) {
+    assert(list.count + items.count <= list.capacity);
     insertRange(list, list.count, ..items);
 }
 
-insert :: (list: *$T/List, index: s64, item: T.TItem) {
-    assert(list.items != null);
+insert :: (list: *$T/SmallList, index: s64, item: T.TItem) {
+    assert(list.count < list.capacity);
     assert(index >= 0 && index <= list.count);
 
-    newCount := list.count + 1;
-
-    if (newCount > list.capacity) {
-        resize(list, newCount);
-    }
-
-    memoryMove(list.items + index + 1, list.items + index, list.count - index);
+    memoryMove(list.items.data + index + 1, list.items.data + index, list.count - index);
 
     list.items[index] = item;
-    list.count = newCount;
+    list.count += 1;
 }
 
-insertNew :: (list: *$T/List, index: s64) -> *T.TItem {
-    assert(list.items != null);
+insertNew :: (list: *$T/SmallList, index: s64) -> *T.TItem {
+    assert(list.count < list.capacity);
     assert(index >= 0 && index <= list.count);
 
-    newCount := list.count + 1;
-
-    if (newCount > list.capacity) {
-        resize(list, newCount);
-    }
-
-    memoryMove(list.items + index + 1, list.items + index, list.count - index);
+    memoryMove(list.items.data + index + 1, list.items.data + index, list.count - index);
 
     #insert #run () -> Code {
         info := type_info(T.TItem);
 
         if (info.type == Type_Info_Tag.POINTER) {
-            return #code item := alloc(T.TItem);
+            return #code item := alloc(T.TItem, list.allocator);
         } else {
             return #code item: T.TItem;
         }
     }();
 
     list.items[index] = item;
-    list.count = newCount;
+    list.count += 1;
 
     return *list.items[index];
 }
 
-insertRange :: (list: *$T/List, index: s64, items: ..T.TItem) {
-    assert(list.items != null);
+insertRange :: (list: *$T/SmallList, index: s64, items: ..T.TItem) {
+    assert(list.count + items.count <= list.capacity);
     assert(index >= 0 && index <= list.count);
 
     if (items.count == 0) {
         return;
     }
 
-    newCount := list.count + items.count;
+    memoryMove(list.items.data + index + items.count, list.items.data + index, list.count - index);
+    memoryCopy(list.items.data + index, items.data, items.count);
 
-    if (newCount > list.capacity) {
-        resize(list, newCount);
-    }
-
-    memoryMove(list.items + index + items.count, list.items + index, list.count - index);
-    memoryCopy(list.items + index, items.data, items.count);
-
-    list.count = newCount;
+    list.count += items.count;
 }
 
-insertRange :: (list: *$T/List, index: s64, other: List(T.TItem)) {
-    assert(list.items != null);
-    assert(index >= 0 && index <= list.count);
-
-    if (other.count == 0) {
-        return;
-    }
-
-    newCount := list.count + other.count;
-
-    if (newCount > list.capacity) {
-        resize(list, newCount);
-    }
-
-    memoryMove(list.items + index + other.count, list.items + index, list.count - index);
-    memoryCopy(list.items + index, other.items, other.count);
-
-    list.count = newCount;
-}
-
-indexOf :: (list: *$T/List, item: T.TItem) -> s64 {
-    assert(list.items != null);
-
-    for i : 0..list.count - 1 {
+indexOf :: (list: *$T/SmallList, item: T.TItem) -> s64 {
+    for i : 0..list.count-1 {
         if (list.items[i] == item) {
             return i;
         }
@@ -200,11 +154,10 @@ indexOf :: (list: *$T/List, item: T.TItem) -> s64 {
     return -1;
 }
 
-indexOf :: (list: *$T/List, item: T.TItem, equalsFn: (T.TItem, T.TItem) -> bool) -> s64 {
-    assert(list.items != null);
+indexOf :: (list: *$T/SmallList, item: T.TItem, equalsFn: (T.TItem, T.TItem) -> bool) -> s64 {
     assert(equalsFn != null);
 
-    for i : 0..list.count - 1 {
+    for i : 0..list.count-1 {
         if (equalsFn(list.items[i], item)) {
             return i;
         }
@@ -213,34 +166,33 @@ indexOf :: (list: *$T/List, item: T.TItem, equalsFn: (T.TItem, T.TItem) -> bool)
     return -1;
 }
 
-contains :: inline (list: *$T/List, item: T.TItem) -> bool {
+contains :: inline (list: *$T/SmallList, item: T.TItem) -> bool {
     return indexOf(list, item) >= 0;
 }
 
-contains :: inline (list: *$T/List, item: T.TItem, equalsFn: (T.TItem, T.TItem) -> bool) -> bool {
+contains :: inline (list: *$T/SmallList, item: T.TItem, equalsFn: (T.TItem, T.TItem) -> bool) -> bool {
     return indexOf(list, item, equalsFn) >= 0;
 }
 
-removeItem :: inline (list: *$T/List, item: T.TItem) {
+removeItem :: inline (list: *$T/SmallList, item: T.TItem) {
     index := indexOf(list, item);
     if (index >= 0 && index < list.count) {
         removeAt(list, index);
     }
 }
 
-removeItem :: inline (list: *$T/List, item: T.TItem, equalsFn: (T.TItem, T.TItem) -> bool) {
+removeItem :: inline (list: *$T/SmallList, item: T.TItem, equalsFn: (T.TItem, T.TItem) -> bool) {
     index := indexOf(list, item, equalsFn);
     if (index >= 0 && index < list.count) {
         removeAt(list, index);
     }
 }
 
-removeAt :: inline (list: *$T/List, index: s64) {
+removeAt :: inline (list: *$T/SmallList, index: s64) {
     removeAtRange(list, index, 1);
 }
 
-removeAtRange :: (list: *$T/List, index: s64, count: s64) {
-    assert(list.items != null);
+removeAtRange :: (list: *$T/SmallList, index: s64, count: s64) {
     assert(index >= 0 && index < list.count);
 
     if (count <= 0) {
@@ -272,13 +224,11 @@ removeAtRange :: (list: *$T/List, index: s64, count: s64) {
         return "";
     }();
 
-    memoryMove(list.items + index, list.items + index + count, list.count - index - count);
+    memoryMove(list.items.data + index, list.items.data + index + count, list.count - index - count);
     list.count = list.count - count;
 }
 
-reverse :: (list: *$T/List) {
-    assert(list.items != null);
-
+reverse :: (list: *$T/SmallList) {
     i := 0;
     j := list.count - 1;
     while (i < j) {
@@ -291,45 +241,36 @@ reverse :: (list: *$T/List) {
     }
 }
 
-sort :: (list: *$T/List, compareFn: (T.TItem, T.TItem) -> s64) {
+sort :: inline (list: *$T/SmallList, compareFn: (T.TItem, T.TItem) -> s64) {
     qsort(list.items, 0, list.count - 1, compareFn);
 }
 
-sort :: (list: *$T/List, byFn: (T.TItem) -> $R) {
+sort :: inline (list: *$T/SmallList, byFn: (T.TItem) -> $R) {
     qsort(list.items, 0, list.count - 1, byFn);
 }
 
-ref :: (list: *$T/List, index: s64) -> *T.TItem {
+ref :: inline (list: *$T/SmallList, index: s64) -> *T.TItem {
     assert(index >= 0 && index < list.count);
     return *list.items[index];
 }
 
-operator [] :: (list: *$T/List, index: s64) -> T.TItem {
+operator [] :: (list: *$T/SmallList, index: s64) -> T.TItem {
     assert(index >= 0 && index < list.count);
     return list.items[index];
 }
 
-operator [] :: (list: $T/List, index: s64) -> T.TItem {
+operator [] :: (list: $T/SmallList, index: s64) -> T.TItem {
     assert(index >= 0 && index < list.count);
     return list.items[index];
 }
 
-fromArray :: inline (array: [] $T, options: ListOptions) -> List(T) {
-    options.capacity = max(options.capacity, array.count);
-
-    list: List(T);
-    init(*list, options);
-    addRange(*list, ..array);
-    return list;
-}
-
-toArray :: (list: *$T/List) -> [] T.TItem {
+toArray :: (list: *$T/SmallList) -> [] T.TItem {
     array := allocArray(T.TItem, list.count, list.allocator);
     memoryCopy(array.data, list.items, list.count);
     return array;
 }
 
-for_expansion :: (list: *$T/List, body: Code, flags: For_Flags) #expand {
+for_expansion :: (list: *$T/SmallList, body: Code, flags: For_Flags) #expand {
     #assert(!(flags & .REVERSE));
 
     index := 0;
@@ -349,14 +290,3 @@ for_expansion :: (list: *$T/List, body: Code, flags: For_Flags) #expand {
 #scope_file
 
 #import "utils";
-
-resize :: (list: *$T/List, minSize: s64) {
-    oldCapacity := list.capacity;
-
-    list.capacity = oldCapacity * 2;
-    if (list.capacity < minSize) {
-        list.capacity = minSize;
-    }
-
-    list.items = realloc(list.items, list.capacity, oldCapacity, list.allocator);
-}

@@ -17,8 +17,6 @@
 //    misrepresented as being the original software.
 // 3. This notice may not be removed or altered from any source distribution.
 //
-// stack-jai is a library written in Jai.
-//
 // It defines a strongly-typed unordered list of elements and its operations.
 // This list has the property that it's stable with respect to the indices of
 // its elements. Once an element is added to the list, the position in which

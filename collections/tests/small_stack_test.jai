@@ -1,4 +1,4 @@
-testQueue :: () {
+testSmallStack :: () {
     valueTypeTest();
     print("\n\n");
     referenceTypeTest();
@@ -12,53 +12,51 @@ randomNext :: Random.random_get;
 
 #import "utils";
 
-valueTypeTest :: (count: u32 = 100000) {
-    queue: Queue(s32);
-    init(*queue, QueueOptions(s32).{});
-    defer uninit(*queue);
+valueTypeTest :: ($count: u32 = 100000) {
+    stack: SmallStack(s32, count);
+    init(*stack, SmallStackOptions(s32, count).{});
+    defer uninit(*stack);
 
     print("--- Start value type tests ---\n");
 
     print("\n");
 
-    measure(sprint("test 1: enqueue % objects", count), #code {
+    measure(sprint("test 1: push % objects", count), #code {
         for i : 0..count-1 {
-            push(*queue, xx i);
-            assert(peek(*queue) == 0);
+            push(*stack, xx i);
+            assert(peek(*stack) == xx i);
         }
     });
 
     print("\n");
 
-    measure(sprint("test 2: contains % objects", count/2), #code {
+    measure(sprint("test 2: contains % objects", count / 2), #code {
         for i : 0..count/2-1 {
             value := randomNext() % count;
-            assert(contains(*queue, xx value));
+            assert(contains(*stack, xx value));
         }
     });
 
     print("\n");
 
-    measure(sprint("test 3: pop % objects", count/2), #code {
+    measure(sprint("test 3: pop % objects", count / 2), #code {
         for i : 0..count/2-1 {
-            peekValue := peek(*queue);
-            popValue := pop(*queue);
+            peekValue := peek(*stack);
+            popValue := pop(*stack);
             assert(peekValue == popValue);
         }
     });
 
     print("\n");
 
-    peekValue := peek(*queue);
     measure(sprint("test 4: push/pop % objects", count/2), #code {
         for i : 0..count/2-1 {
             if (randomNext() % 100 > 50) {
-                push(*queue, xx i);
-                assert(peek(*queue) == peekValue);
+                push(*stack, -(cast(s32) i));
+                assert(peek(*stack) == -(cast(s32) i));
             } else {
-                popValue := pop(*queue);
-                assert(peekValue == popValue);
-                peekValue = peek(*queue);
+                popValue := pop(*stack);
+                assert(peek(*stack) != popValue);
             }
         }
     });
@@ -66,10 +64,9 @@ valueTypeTest :: (count: u32 = 100000) {
     print("\n");
 
     print("--- End value type tests ---\n");
-
 }
 
-referenceTypeTest :: (count: u32 = 100000) {
+referenceTypeTest :: ($count: u32 = 100000) {
     Entry :: struct {
         index: s32;
         name: string;
@@ -79,65 +76,63 @@ referenceTypeTest :: (count: u32 = 100000) {
         return e1.index == e2.index;
     };
 
-    options: QueueOptions(*Entry);
+    options: SmallStackOptions(*Entry, count);
     options.freeItems = true;
 
-    queue: Queue(*Entry);
-    init(*queue, options);
-    defer uninit(*queue);
+    stack: SmallStack(*Entry, count);
+    init(*stack, options);
+    defer uninit(*stack);
 
     print("--- Start reference type tests ---\n");
 
     print("\n");
 
-    measure(sprint("test 1: enqueue % objects", count), #code {
+    measure(sprint("test 1: push % objects", count), #code {
         for i : 0..count-1 {
             entry := alloc(Entry);
             entry.index = xx i;
-            entry.name = "insert";
-            push(*queue, entry);
-            assert(peek(*queue).index == 0);
+            entry.name = "entry";
+            push(*stack, entry);
+            assert(peek(*stack).index == entry.index);
         }
     });
 
     print("\n");
 
-    measure(sprint("test 2: contains % objects", count/2), #code {
+    measure(sprint("test 2: contains % objects", count / 2), #code {
         for i : 0..count/2-1 {
             entry := alloc(Entry);
             entry.index = xx (randomNext() % count);
-            entry.name = "contains";
-            assert(contains(*queue, entry, entryEquals));
+            entry.name = "entry";
+            assert(contains(*stack, entry, entryEquals));
             free(entry);
         }
     });
 
     print("\n");
 
-    measure(sprint("test 3: pop % objects", count/2), #code {
+    measure(sprint("test 3: pop % objects", count / 2), #code {
         for i : 0..count/2-1 {
-            peekValue := peek(*queue);
-            popValue := pop(*queue);
+            peekValue := peek(*stack);
+            popValue := pop(*stack);
             assert(peekValue.index == popValue.index);
+            free(popValue);
         }
     });
 
     print("\n");
 
-    peekValue := peek(*queue);
     measure(sprint("test 4: push/pop % objects", count/2), #code {
         for i : 0..count/2-1 {
             if (randomNext() % 100 > 50) {
                 entry := alloc(Entry);
-                entry.index = xx i;
-                entry.name = "insert";
-                push(*queue, entry);
-                assert(peek(*queue).index == peekValue.index);
+                entry.index = -(cast(s32) i);
+                entry.name = "entry";
+                push(*stack, entry);
+                assert(peek(*stack).index == -(cast(s32) i));
             } else {
-                popValue := pop(*queue);
-                assert(peekValue.index == popValue.index);
-                peekValue = peek(*queue);
-                free(popValue);
+                popValue := pop(*stack);
+                assert(peek(*stack).index != popValue.index);
             }
         }
     });

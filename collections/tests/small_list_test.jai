@@ -1,6 +1,6 @@
-testList :: () {
-    valueTypeTest();
-    print("\n\n");
+testSmallList :: () {
+    // valueTypeTest();
+    // print("\n\n");
     referenceTypeTest();
     print("\n\n");
 }
@@ -15,9 +15,9 @@ randomNext :: Random.random_get;
 
 #import "utils";
 
-valueTypeTest :: (count: u32 = 100000) {
-    list: List(s32);
-    init(*list, ListOptions(s32).{});
+valueTypeTest :: ($count: u32 = 100000) {
+    list: SmallList(s32, count);
+    init(*list, SmallListOptions(s32, count).{});
     defer uninit(*list);
 
     print("--- Start value type tests ---\n");
@@ -73,7 +73,7 @@ valueTypeTest :: (count: u32 = 100000) {
 
     print("\n");
 
-    rangeCount :: 50000;
+    rangeCount :: 10000;
     rangeAt :: 100;
 
     rangeValues := allocArray(s32, rangeCount);
@@ -124,7 +124,7 @@ valueTypeTest :: (count: u32 = 100000) {
     print("--- End value type tests ---\n");
 }
 
-referenceTypeTest :: (count: u32 = 100000) {
+referenceTypeTest :: ($count: u32 = 100000) {
     Entry :: struct {
         index: s32;
         name: string;
@@ -134,10 +134,10 @@ referenceTypeTest :: (count: u32 = 100000) {
         return e1.index == e2.index;
     };
 
-    options: ListOptions(*Entry);
+    options: SmallListOptions(*Entry, count);
     options.freeItems = true;
 
-    list: List(*Entry);
+    list: SmallList(*Entry, count);
     init(*list, options);
     defer uninit(*list);
 
@@ -169,19 +169,7 @@ referenceTypeTest :: (count: u32 = 100000) {
 
     print("\n");
 
-    measure(sprint("test 3: insert % objects", count / 2), #code {
-        for i : 0..count/2-1 {
-            entry := alloc(Entry);
-            entry.index = xx (randomNext() % list.count);
-            entry.name = "entry";
-            insert(*list, entry.index, entry);
-            assert(list[entry.index] == entry);
-        }
-    });
-
-    print("\n");
-
-    measure(sprint("test 4: remove by index % objects", count / 2), #code {
+    measure(sprint("test 3: remove by index % objects", count / 2), #code {
         for i : 0..count/2-1 {
             index := randomNext() % (list.count - 1);
             entry := list[index + 1];
@@ -203,7 +191,7 @@ referenceTypeTest :: (count: u32 = 100000) {
         entries[i] = entry;
     }
 
-    measure(sprint("test 5: remove by value % objects", count / 2), #code {
+    measure(sprint("test 4: remove by value % objects", count / 2), #code {
         for i : 0..count/2-1 {
             removeItem(*list, entries[i]);
         }
@@ -215,7 +203,19 @@ referenceTypeTest :: (count: u32 = 100000) {
 
     print("\n");
 
-    rangeCount :: 50000;
+    measure(sprint("test 5: insert % objects", count / 2), #code {
+        for i : 0..count/2-1 {
+            entry := alloc(Entry);
+            entry.index = xx (randomNext() % list.count);
+            entry.name = "entry";
+            insert(*list, entry.index, entry);
+            assert(list[entry.index] == entry);
+        }
+    });
+
+    print("\n");
+
+    rangeCount :: 10000;
     rangeAt :: 100;
 
     rangeValues := allocArray(*Entry, rangeCount);

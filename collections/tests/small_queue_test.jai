@@ -1,4 +1,4 @@
-testQueue :: () {
+testSmallQueue :: () {
     valueTypeTest();
     print("\n\n");
     referenceTypeTest();
@@ -12,9 +12,9 @@ randomNext :: Random.random_get;
 
 #import "utils";
 
-valueTypeTest :: (count: u32 = 100000) {
-    queue: Queue(s32);
-    init(*queue, QueueOptions(s32).{});
+valueTypeTest :: ($count: u32 = 100000) {
+    queue: SmallQueue(s32, count);
+    init(*queue, SmallQueueOptions(s32, count).{});
     defer uninit(*queue);
 
     print("--- Start value type tests ---\n");
@@ -69,7 +69,7 @@ valueTypeTest :: (count: u32 = 100000) {
 
 }
 
-referenceTypeTest :: (count: u32 = 100000) {
+referenceTypeTest :: ($count: u32 = 100000) {
     Entry :: struct {
         index: s32;
         name: string;
@@ -79,10 +79,10 @@ referenceTypeTest :: (count: u32 = 100000) {
         return e1.index == e2.index;
     };
 
-    options: QueueOptions(*Entry);
+    options: SmallQueueOptions(*Entry, count);
     options.freeItems = true;
 
-    queue: Queue(*Entry);
+    queue: SmallQueue(*Entry, count);
     init(*queue, options);
     defer uninit(*queue);
 

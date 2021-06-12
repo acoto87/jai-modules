@@ -22,6 +22,13 @@ arrayClear :: inline (array: [] $T) {
     memorySet(array.data, 0, array.count);
 }
 
+arrayFill :: inline (array: [] $T, value: T) {
+    assert(array.data != null);
+    for i : 0..array.count-1 {
+        array[i] = value;
+    }
+}
+
 array :: inline ($type: Type, values: ..type) -> [] type {
     return values;
 }

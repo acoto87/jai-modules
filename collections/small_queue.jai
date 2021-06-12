@@ -18,65 +18,60 @@
 // 3. This notice may not be removed or altered from any source distribution.
 //
 // It defines a strongly-typed queue of elements and its operations.
+// This is not a resizable queue but a fixed length queue that can be stack-allocated.
 //
-Queue :: struct(TItem: Type) {
+SmallQueue :: struct(TItem: Type, length: s64) {
     head: s64;
     tail: s64;
     count: s64;
     capacity: s64;
     freeItems: bool;
     allocator: Allocator;
-    items: *TItem;
+    items: [length] TItem;
 }
 
-QueueOptions :: struct(TItem: Type) {
-    capacity: s64 = 8;
+SmallQueueOptions :: struct(TItem: Type, length: s64) {
     freeItems: bool;
     allocator: Allocator;
 }
 
-createQueue :: inline ($T: Type) -> Queue(T) {
-    queue: Queue(T);
+createSmallQueue :: inline ($T: Type, $length: s64) -> SmallQueue(T, length) {
+    queue: SmallQueue(T);
     init(*queue);
     return queue;
 }
 
-createQueue :: inline ($T: Type, options: QueueOptions(T)) -> Queue(T) {
-    queue: Queue(T);
+createSmallQueue :: inline ($T: Type, $length: s64, options: SmallQueueOptions(T, length)) -> SmallQueue(T, length) {
+    queue: SmallQueue(T);
     init(*queue, options);
     return queue;
 }
 
-init :: inline (queue: *$T/Queue) {
-    init(queue, QueueOptions(T.TItem).{});
+init :: inline (queue: *$T/SmallQueue) {
+    #assert(T.length > 0);
+    init(queue, SmallQueueOptions(T.TItem, T.length).{});
 }
 
-init :: (queue: *$T/Queue, options: QueueOptions(T.TItem)) {
-    assert(options.capacity > 0);
+init :: (queue: *$T/SmallQueue, options: SmallQueueOptions(T.TItem, T.length)) {
+    #assert(T.length > 0);
 
     queue.head = 0;
     queue.tail = 0;
     queue.count = 0;
-    queue.capacity = options.capacity;
+    queue.capacity = T.length;
     queue.freeItems = options.freeItems;
     queue.allocator = options.allocator;
-    queue.items = alloc(T.TItem, queue.capacity, queue.allocator, initialized = false);
 }
 
-uninit :: (queue: *$T/Queue, freeQueue: bool = false) {
-    if (queue.items) {
-        clear(queue);
-        free(queue.items, queue.allocator);
-    }
+uninit :: (queue: *$T/SmallQueue, freeQueue: bool = false) {
+    clear(queue);
 
     if (freeQueue) {
         free(queue, queue.allocator);
     }
 }
 
-clear :: (queue: *$T/Queue) {
-    assert(queue.items != null);
-
+clear :: (queue: *$T/SmallQueue) {
     #insert #run () -> string {
         info := type_info(T.TItem);
 
@@ -96,12 +91,8 @@ clear :: (queue: *$T/Queue) {
     queue.count = 0;
 }
 
-push :: (queue: *$T/Queue, item: T.TItem) {
-    assert(queue.items != null);
-
-    if (queue.count == queue.capacity) {
-        resize(queue);
-    }
+push :: (queue: *$T/SmallQueue, item: T.TItem) {
+    assert(queue.count < queue.capacity);
 
     queue.items[queue.tail] = item;
     queue.tail += 1;
@@ -111,8 +102,7 @@ push :: (queue: *$T/Queue, item: T.TItem) {
     queue.count += 1;
 }
 
-pop :: (queue: *$T/Queue) -> T.TItem {
-    assert(queue.items != null);
+pop :: (queue: *$T/SmallQueue) -> T.TItem {
     assert(queue.count > 0);
 
     item := queue.items[queue.head];
@@ -124,16 +114,12 @@ pop :: (queue: *$T/Queue) -> T.TItem {
     return item;
 }
 
-peek :: (queue: *$T/Queue) -> T.TItem {
-    assert(queue.items != null);
+peek :: inline (queue: *$T/SmallQueue) -> T.TItem {
     assert(queue.count > 0);
-
     return queue.items[queue.head];
 }
 
-indexOf :: (queue: *$T/Queue, item: T.TItem) -> s64 {
-    assert(queue.items != null);
-
+indexOf :: (queue: *$T/SmallQueue, item: T.TItem) -> s64 {
     index := 0;
     current := queue.head;
     while (index < queue.count) {
@@ -150,8 +136,7 @@ indexOf :: (queue: *$T/Queue, item: T.TItem) -> s64 {
     return -1;
 }
 
-indexOf :: (queue: *$T/Queue, item: T.TItem, equalsFn: (T.TItem, T.TItem) -> bool) -> s64 {
-    assert(queue.items != null);
+indexOf :: (queue: *$T/SmallQueue, item: T.TItem, equalsFn: (T.TItem, T.TItem) -> bool) -> s64 {
     assert(equalsFn != null);
 
     index := 0;
@@ -170,15 +155,15 @@ indexOf :: (queue: *$T/Queue, item: T.TItem, equalsFn: (T.TItem, T.TItem) -> boo
     return -1;
 }
 
-contains :: inline (queue: *$T/Queue, item: T.TItem) -> bool {
+contains :: inline (queue: *$T/SmallQueue, item: T.TItem) -> bool {
     return indexOf(queue, item) >= 0;
 }
 
-contains :: inline (queue: *$T/Queue, item: T.TItem, equalsFn: (T.TItem, T.TItem) -> bool) -> bool {
+contains :: inline (queue: *$T/SmallQueue, item: T.TItem, equalsFn: (T.TItem, T.TItem) -> bool) -> bool {
     return indexOf(queue, item, equalsFn) >= 0;
 }
 
-for_expansion :: (queue: *$T/Queue, body: Code, flags: For_Flags) #expand {
+for_expansion :: (queue: *$T/SmallQueue, body: Code, flags: For_Flags) #expand {
     #assert(!(flags & .REVERSE));
 
     index := 0;
@@ -199,28 +184,3 @@ for_expansion :: (queue: *$T/Queue, body: Code, flags: For_Flags) #expand {
         }
     }
 }
-
-#scope_file
-
-#import "utils";
-
-resize :: (queue: *$T/Queue) {
-    oldCapacity := queue.capacity;
-    oldItems := queue.items;
-
-    queue.capacity = oldCapacity * 2;
-    queue.items = alloc(T.TItem, queue.capacity, queue.allocator, initialized = false);
-
-    if (queue.head > queue.tail) {
-        memoryCopy(queue.items, oldItems + queue.head, oldCapacity - queue.head);
-        memoryCopy(queue.items + oldCapacity - queue.head, oldItems, (queue.head + queue.count) % oldCapacity);
-    } else {
-        memoryCopy(queue.items, oldItems + queue.head, queue.count);
-    }
-
-    queue.head = 0;
-    queue.tail = queue.count;
-
-    free(oldItems, queue.allocator);
-}
-

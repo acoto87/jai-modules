@@ -6,22 +6,28 @@ memoryCopy :: inline (dest: *$T, src: *T, count: s64 = 1) {
 memoryMove :: (dest: *$T, src: *T, count: s64 = 1) {
     assert(count >= 0);
 
+    if (count == 0) {
+        return;
+    }
+
     if (dest < src) {
         memoryCopy(dest, src, count);
     } else {
+        dest8 := cast(*u8) dest;
+        src8 := cast(*u8) src;
+
         count *= size_of(T);
         r := count % size_of(s32);
         while (r > 0) {
-            <<(dest + count) = <<(src + count);
+            <<(dest8 + count) = <<(src8 + count);
             r -= 1;
+            count -= 1;
         }
 
-        count -= count % size_of(s32);
-
-        dest32 := cast(*s32)(dest + count);
+        dest32 := cast(*s32) (dest8 + count);
         dest32 -= 1;
 
-        src32 := cast(*s32)(src + count);
+        src32 := cast(*s32) (src8 + count);
         src32 -= 1;
 
         while (count > 0) {

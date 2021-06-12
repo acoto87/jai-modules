@@ -26,17 +26,23 @@
 );
 
 #load "list.jai";
+#load "small_list.jai";
 #load "map.jai";
 #load "set.jai";
 #load "stack.jai";
+#load "small_stack.jai";
 #load "queue.jai";
+#load "small_queue.jai";
 #load "binary_heap.jai";
 #load "stable_list.jai";
 
 #if loadTests {
     #load "tests/list_test.jai";
+    #load "tests/small_list_test.jai";
     #load "tests/map_test.jai";
     #load "tests/stack_test.jai";
+    #load "tests/small_stack_test.jai";
     #load "tests/queue_test.jai";
+    #load "tests/small_queue_test.jai";
     #load "tests/binary_heap_test.jai";
 }

@@ -1,9 +1,8 @@
 testStack :: () {
     valueTypeTest();
-
     print("\n\n");
-
     referenceTypeTest();
+    print("\n\n");
 }
 
 #scope_file
@@ -16,6 +15,7 @@ randomNext :: Random.random_get;
 valueTypeTest :: (count: u32 = 100000) {
     stack: Stack(s32);
     init(*stack, StackOptions(s32).{});
+    defer uninit(*stack);
 
     print("--- Start value type tests ---\n");
 
@@ -72,14 +72,16 @@ referenceTypeTest :: (count: u32 = 100000) {
         name: string;
     };
 
-    options: StackOptions(*Entry);
-    options.freeItems = true;
-    options.equalsFn = (e1: *Entry, e2: *Entry) -> bool {
+    entryEquals :: inline (e1: *Entry, e2: *Entry) -> bool {
         return e1.index == e2.index;
     };
 
+    options: StackOptions(*Entry);
+    options.freeItems = true;
+
     stack: Stack(*Entry);
     init(*stack, options);
+    defer uninit(*stack);
 
     print("--- Start reference type tests ---\n");
 
@@ -102,7 +104,7 @@ referenceTypeTest :: (count: u32 = 100000) {
             entry := alloc(Entry);
             entry.index = xx (randomNext() % count);
             entry.name = "entry";
-            assert(contains(*stack, entry));
+            assert(contains(*stack, entry, entryEquals));
             free(entry);
         }
     });
