@@ -1,5 +1,15 @@
-isEmpty :: inline (s: string) -> bool {
-    return s.count == 0 || s.data == null;
+toString :: (cString: *u8) -> string {
+    s: string = ---;
+    s.data = cString;
+    s.count = strlen(cString);
+    return s;
+}
+
+toCString :: (s: string, allocator: Allocator = null) -> *u8 {
+    result := alloc(u8, s.count + 1, allocator);
+    memoryCopy(result, s.data, s.count);
+    result[s.count] = 0;
+    return result;
 }
 
 strlen :: (str: *u8) -> s64 {
@@ -58,38 +68,3 @@ strcpy :: (dst: *u8, src: *u8) {
     }
     <<dst = 0;
 }
-
-toString :: (cString: *u8) -> string {
-    s: string = ---;
-    s.data = cString;
-    s.count = strlen(cString);
-    return s;
-}
-
-toCString :: (s: string, allocator: Allocator = null) -> *u8 {
-    result := alloc(u8, s.count + 1, allocator);
-    memoryCopy(result, s.data, s.count);
-    result[s.count] = 0;
-    return result;
-}
-
-for_expansion :: (str: *string, body: Code, flags: For_Flags) #expand {
-    #assert(!(flags & .REVERSE));
-    #assert(!(flags & .POINTER));
-
-    for i : 0..str.count-1 {
-        `it := str[i];
-        `it_index := i;
-        #insert (remove=assert(false)) body;
-    }
-}
-
-StringBuilder :: Basic.String_Builder;
-freeBuffers :: Basic.free_buffers;
-appendToBuilder :: Basic.append;
-printToBuilder :: Basic.print_to_builder;
-builderToString :: Basic.builder_to_string;
-
-#scope_file
-
-Basic :: #import "Basic";

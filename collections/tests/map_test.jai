@@ -8,16 +8,11 @@ testMap :: () {
 
 #scope_file
 
-String :: #import "String";
-equal :: String.equal;
-
 Random :: #import "Random";
 randomNext :: Random.random_get;
 
-Basic :: #import "Basic";
-to_upper :: Basic.to_upper;
-
 #import "utils";
+#import "strings";
 
 valueTypeTest :: ($count: s64 = 100000) {
     options := HashMapOptions(s64, s64).{

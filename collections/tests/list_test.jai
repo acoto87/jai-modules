@@ -7,13 +7,11 @@ testList :: () {
 
 #scope_file
 
-String :: #import "String";
-compare :: String.compare;
-
 Random :: #import "Random";
 randomNext :: Random.random_get;
 
 #import "utils";
+#import "strings";
 
 valueTypeTest :: (count: u32 = 100000) {
     list: List(s32);

@@ -171,7 +171,6 @@ memoryRead :: ($type: Type, ptr: *void, index: s64, littleEndian: bool = true) -
 
 #scope_file
 
-Basic :: #import "Basic";
 _alloc :: Basic.alloc;
 _realloc :: Basic.realloc;
 _free :: Basic.free;

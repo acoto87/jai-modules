@@ -115,13 +115,9 @@ NVGcreateFlags :: enum s32 {
 
 #scope_file
 
-Basic :: #import "Basic";
-String_Builder :: Basic.String_Builder;
-append :: Basic.append;
-free_buffers :: Basic.free_buffers;
-builder_to_string :: Basic.builder_to_string;
-
 #import "GL";
+#import "utils";
+#import "strings";
 
 // @Note: This constant is missing from gl_core.jai in compiler modules
 GL_GENERATE_MIPMAP :: 0x8191;
@@ -573,29 +569,29 @@ glnvg__renderCreate :: (uptr: *void) -> bool {
     // TODO: mediump float may not be enough for GLES2 in iOS.
     // see the following discussion: https://github.com/memononen/nanovg/issues/46
 
-    builder: String_Builder;
-    defer free_buffers(*builder);
+    builder: StringBuilder;
+    defer freeBuffers(*builder);
 
     #if NANOVG_GL2 {
-        append(*builder, "#define NANOVG_GL2 1\n");
+        appendToBuilder(*builder, "#define NANOVG_GL2 1\n");
     } else if NANOVG_GL3 {
-        append(*builder, "#version 150 core\n");
-        append(*builder, "#define NANOVG_GL3 1\n");
+        appendToBuilder(*builder, "#version 150 core\n");
+        appendToBuilder(*builder, "#define NANOVG_GL3 1\n");
     } else if NANOVG_GLES2 {
-        append(*builder, "#version 100\n");
-        append(*builder, "#define NANOVG_GL2 1\n");
+        appendToBuilder(*builder, "#version 100\n");
+        appendToBuilder(*builder, "#define NANOVG_GL2 1\n");
     } else if NANOVG_GLES3 {
-        append(*builder, "#version 300 es\n");
-        append(*builder, "#define NANOVG_GL3 1\n");
+        appendToBuilder(*builder, "#version 300 es\n");
+        appendToBuilder(*builder, "#define NANOVG_GL3 1\n");
     }
 
     #if NANOVG_GL_USE_UNIFORMBUFFER {
-        append(*builder, "#define USE_UNIFORMBUFFER 1\n");
+        appendToBuilder(*builder, "#define USE_UNIFORMBUFFER 1\n");
     } else {
-        append(*builder, "#define UNIFORMARRAY_SIZE 11\n");
+        appendToBuilder(*builder, "#define UNIFORMARRAY_SIZE 11\n");
     }
 
-    shaderHeader := builder_to_string(*builder);
+    shaderHeader := builderToString(*builder);
 
     fillVertShader := #string DONE
         #ifdef NANOVG_GL3

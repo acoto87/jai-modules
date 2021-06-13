@@ -18,6 +18,13 @@ getInternalType :: ($enumType: Type) -> Type {
     }
 }
 
+hasFlags :: (value: $T, flags: T) -> bool {
+    #assert(isEnumFlags(type_info(T)));
+    return (value & flags) == flags;
+}
+
+getEnumValueByName :: Reflection.get_enum_by_name;
+
 EnumIterator :: struct(enumType: Type) {
 }
 
@@ -47,3 +54,7 @@ for_expansion :: (iterator: *$T/EnumIterator, body: Code, flags: For_Flags) #exp
         #insert body;
     }
 }
+
+#scope_file
+
+ Reflection :: #import "Reflection";

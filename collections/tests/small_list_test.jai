@@ -1,19 +1,17 @@
 testSmallList :: () {
-    // valueTypeTest();
-    // print("\n\n");
+    valueTypeTest();
+    print("\n\n");
     referenceTypeTest();
     print("\n\n");
 }
 
 #scope_file
 
-String :: #import "String";
-compare :: String.compare;
-
 Random :: #import "Random";
 randomNext :: Random.random_get;
 
 #import "utils";
+#import "strings";
 
 valueTypeTest :: ($count: u32 = 100000) {
     list: SmallList(s32, count);
@@ -130,7 +128,7 @@ referenceTypeTest :: ($count: u32 = 100000) {
         name: string;
     };
 
-    entryEquals :: (e1: *Entry, e2: *Entry) -> bool {
+    entryEquals :: inline (e1: *Entry, e2: *Entry) -> bool {
         return e1.index == e2.index;
     };
 
@@ -193,7 +191,7 @@ referenceTypeTest :: ($count: u32 = 100000) {
 
     measure(sprint("test 4: remove by value % objects", count / 2), #code {
         for i : 0..count/2-1 {
-            removeItem(*list, entries[i]);
+            removeItem(*list, entries[i], entryEquals);
         }
     }, post = #code {
         for i : 0..list.count-1 {
@@ -201,10 +199,12 @@ referenceTypeTest :: ($count: u32 = 100000) {
         }
     });
 
+    free(entries);
+
     print("\n");
 
-    measure(sprint("test 5: insert % objects", count / 2), #code {
-        for i : 0..count/2-1 {
+    measure(sprint("test 5: insert % objects", count / 4), #code {
+        for i : 0..count/4-1 {
             entry := alloc(Entry);
             entry.index = xx (randomNext() % list.count);
             entry.name = "entry";

@@ -32,12 +32,12 @@ f64 :: float64;
 #load "memory.jai";
 #load "memory_buffer.jai";
 #load "arrays.jai";
-#load "strings.jai";
 #load "fixed_string.jai";
 #load "random.jai";
 #load "log.jai";
 #load "enums.jai";
 #load "range.jai";
+#load "reflection.jai";
 
 measure :: (message: string, code: Code, prev: Code = null, post: Code = null) #expand {
     print("--- Start % ---\n", message);
@@ -99,6 +99,11 @@ sprint :: Basic.sprint;
 tprint :: Basic.tprint;
 formatFloat :: Basic.formatFloat;
 FormatFloat :: Basic.FormatFloat;
+formatInt :: Basic.formatInt;
+FormatInt :: Basic.FormatInt;
+formatStruct :: Basic.formatStruct;
+FormatStruct :: Basic.FormatStruct;
+
 exit :: Basic.exit;
 resetTemporaryStorage :: Basic.reset_temporary_storage;
 
@@ -127,9 +132,13 @@ inRange :: inline (x: s32, min: s32, max: s32) -> bool {
     return x >= min && x < max;
 }
 
-#scope_file
+#scope_module
 
 Basic :: #import "Basic";
+
+#import "strings";
+
+#scope_file
 
 #import "GL";
 

@@ -83,9 +83,6 @@ log :: inline (severity: LogSeverity, formatString: string, args: .. Any, loc :=
 
 #scope_file
 
-Basic :: #import "Basic";
-formatInt :: Basic.formatInt;
-
 _getFileName :: (filePath: string) -> string {
     index := 0;
     for i : range(0, filePath.count) {
