@@ -1,19 +1,20 @@
 #load "cstrings.jai";
 #load "parsing.jai";
 
-isEmpty :: inline (s: string) -> bool {
+isEmpty :: inline (s: string) -> bool #must {
     return s.count == 0 || s.data == null;
 }
 
-for_expansion :: (str: *string, body: Code, flags: For_Flags) #expand {
-    #assert(!(flags & .REVERSE));
-    #assert(!(flags & .POINTER));
-
-    for i : 0..str.count-1 {
-        `it := str[i];
-        `it_index := i;
-        #insert (remove=assert(false)) body;
+isEmptyOrWhiteSpace :: (str: string) -> bool #must {
+    if (!isEmpty(str)) {
+        for c : str {
+            if (!isSpace(c)) {
+                return false;
+            }
+        }
     }
+
+    return true;
 }
 
 StringBuilder :: Basic.String_Builder;
@@ -134,10 +135,11 @@ trim :: String.trim;
 
 subString :: String.slice;
 subString :: inline (str: string, index: s64) -> string #must {
-    return substring(str, index, str.count - index);
+    return subString(str, index, str.count - index);
 }
 
 subStringCount :: String.count;
+subStringCountAny :: String.count_any;
 
 join :: String.join;
 
@@ -161,40 +163,56 @@ split :: (str: string, separator: u8, $$ options := StringSplitOptions.None) -> 
 
 split :: (str: string, separator: string, $$ options := StringSplitOptions.None) -> [] string {
     entries := String.split(str, separator);
+    return processEntriesAfterSplit(entries, options);
+}
 
-    if (hasFlags(options, StringSplitOptions.TrimEntries)) {
-        for i : 0..entries.count-1 {
-            entries[i] = trim(entries[i]);
-        }
+splitAny :: (str: string, separators: string, $$ options := StringSplitOptions.None) -> [] string {
+    if (isEmpty(str)) {
+        return .[];
     }
 
-    if (hasFlags(options, StringSplitOptions.RemoveEmptyEntries)) {
-        emptyEntriesCount := 0;
-        for i : 0..entries.count-1 {
-            if (isEmpty(entries[i])) {
-                emptyEntriesCount += 1;
-            }
-        }
+    n := subStringCountAny(str, separators) + 1;
+    entries := allocArray(string, n);
 
-        if (emptyEntriesCount > 0) {
-            newEntries := allocArray(string, emptyEntriesCount);
-            i, j := 0;
-            while (i < entries.count && j < newEntries.count) {
-                if (!isEmpty(entries[i])) {
-                    newEntries[j] = entries[i];
-                    j += 1;
-                }
-                i += 1;
-            }
-            free(entries);
-            entries = newEntries;
+    i := 0;
+    last := 0;
+
+    for k : 0..str.count-1 {
+        if (isAny(str[k], separators)) {
+            entries[i] = subString(str, last, k - last);
+            last = k + 1;
+            i += 1;
         }
     }
+    assert(i == n - 1);
+    entries[i] = subString(str, last, str.count - last);
+    return processEntriesAfterSplit(entries, options);
+}
 
-    return entries;
+for_expansion :: (str: *string, body: Code, flags: For_Flags) #expand {
+    #assert(!(flags & .REVERSE));
+    #assert(!(flags & .POINTER));
+
+    for i : 0..str.count-1 {
+        `it := str[i];
+        `it_index := i;
+        #insert (remove=assert(false)) body;
+    }
 }
 
 replace :: String.replace;
+
+fnvStrHash :: (str: string) -> s64 {
+    FNV_PRIME : u32 : 0x01000193;
+    FNV_OFFSET : u32 : 0x811c9dc5;
+
+    hash := FNV_OFFSET;
+    for i : 0..str.count-1 {
+        hash = (cast(u32) str[i] ^ hash) * FNV_PRIME;
+    }
+
+    return cast(s64) hash;
+}
 
 #scope_module
 
@@ -202,3 +220,40 @@ Basic :: #import "Basic";
 String :: #import "String";
 
 #import "utils";
+
+#scope_file
+
+processEntriesAfterSplit :: (entries: [] string, $$ options := StringSplitOptions.None) -> [] string {
+    internalEntries := entries;
+
+    if (hasFlags(options, StringSplitOptions.TrimEntries)) {
+        for i : 0..entries.count-1 {
+            internalEntries[i] = trim(internalEntries[i]);
+        }
+    }
+
+    if (hasFlags(options, StringSplitOptions.RemoveEmptyEntries)) {
+        emptyEntriesCount := 0;
+        for i : 0..entries.count-1 {
+            if (isEmpty(internalEntries[i])) {
+                emptyEntriesCount += 1;
+            }
+        }
+
+        if (emptyEntriesCount > 0) {
+            newEntries := allocArray(string, entries.count - emptyEntriesCount);
+            i, j := 0;
+            while (i < entries.count && j < newEntries.count) {
+                if (!isEmpty(internalEntries[i])) {
+                    newEntries[j] = internalEntries[i];
+                    j += 1;
+                }
+                i += 1;
+            }
+            free(internalEntries);
+            internalEntries = newEntries;
+        }
+    }
+
+    return internalEntries;
+}

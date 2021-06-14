@@ -207,6 +207,26 @@ removeKey :: (map: *$T/HashMap, key: T.TKey) {
     }
 }
 
+getKeys :: (map: *$T/HashMap) -> [] T.TKey {
+    if (map.count == 0) {
+        return T.TKey.[];
+    }
+
+    keys := allocArray(T.TKey, map.count);
+
+    index := 0;
+    current := map.firstInOrder;
+    while (current >= 0) {
+        entry := *map.entries[current];
+        keys[index] = entry.key;
+
+        current = entry.nextInOrder;
+        index += 1;
+    }
+
+    return keys;
+}
+
 for_expansion :: (map: *$T/HashMap, body: Code, flags: For_Flags) #expand {
     #assert(!(flags & .REVERSE));
 

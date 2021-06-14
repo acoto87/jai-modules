@@ -107,6 +107,8 @@ FormatStruct :: Basic.FormatStruct;
 exit :: Basic.exit;
 resetTemporaryStorage :: Basic.reset_temporary_storage;
 
+setWorkingDirectory :: Basic.set_working_directory;
+
 glCheckOpenGLVersion :: () {
     vendor := glGetString(GL_VENDOR);
     print("Vendor: %\n", toString(vendor));
