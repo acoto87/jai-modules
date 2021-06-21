@@ -28,7 +28,9 @@
 #load "list.jai";
 #load "small_list.jai";
 #load "map.jai";
+#load "small_map.jai";
 #load "set.jai";
+#load "small_set.jai";
 #load "stack.jai";
 #load "small_stack.jai";
 #load "queue.jai";
@@ -40,6 +42,9 @@
     #load "tests/list_test.jai";
     #load "tests/small_list_test.jai";
     #load "tests/map_test.jai";
+    #load "tests/small_map_test.jai";
+    #load "tests/set_test.jai";
+    #load "tests/small_set_test.jai";
     #load "tests/stack_test.jai";
     #load "tests/small_stack_test.jai";
     #load "tests/queue_test.jai";

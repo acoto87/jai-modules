@@ -19,10 +19,9 @@
 //
 // It defines a strongly-typed hash set of elements and its operations.
 //
-HashSet :: struct(TItem: Type) {
+SmallHashSet :: struct(TItem: Type, length: s64) {
     count: s64;
     capacity: s64;
-    loadFactor: float64;
     defaultValue: TItem;
     freeItems: bool;
     firstInOrder: s64;
@@ -30,10 +29,10 @@ HashSet :: struct(TItem: Type) {
     allocator: Allocator;
     hashFn: (TItem) -> s64;
     equalsFn: (TItem, TItem) -> bool;
-    entries: *HashSetEntry(TItem);
+    entries: [length] SmallHashSetEntry(TItem);
 }
 
-HashSetEntry :: struct(TItem: Type) {
+SmallHashSetEntry :: struct(TItem: Type) {
     active: bool;
     hash: s64;
     idx: s64;
@@ -44,7 +43,7 @@ HashSetEntry :: struct(TItem: Type) {
     item: TItem;
 }
 
-HashSetOptions :: struct(TItem: Type) {
+SmallHashSetOptions :: struct(TItem: Type, length: s64) {
     capacity: s64 = 8;
     defaultValue: TItem;
     freeItems: bool;
@@ -53,18 +52,16 @@ HashSetOptions :: struct(TItem: Type) {
     equalsFn: (TItem, TItem) -> bool;
 }
 
-createHashSet :: ($T: Type, options: HashSetOptions(T)) -> HashSet(T) {
-    set: HashSet(T);
+createSmallHashSet :: ($T: Type, $length: s64, options: SmallHashSetOptions(T, length)) -> SmallHashSet(T, length) {
+    set: SmallHashSet(T, length);
     init(*set, options);
     return set;
 }
 
-init :: (set: *$T/HashSet, options: HashSetOptions(T.TItem)) {
-    assert(options.capacity > 0);
+init :: (set: *$T/SmallHashSet, options: SmallHashSetOptions(T.TItem, T.length)) {
     assert(options.hashFn != null);
 
-    set.capacity = options.capacity;
-    set.loadFactor = 0.8;
+    set.capacity = T.length;
     set.defaultValue = options.defaultValue;
     set.freeItems = options.freeItems;
     set.firstInOrder = -1;
@@ -73,23 +70,17 @@ init :: (set: *$T/HashSet, options: HashSetOptions(T.TItem)) {
     set.hashFn = options.hashFn;
     set.equalsFn = options.equalsFn;
     set.count = 0;
-    set.entries = alloc(HashSetEntry(T.TItem), count = set.capacity, allocator = set.allocator);
 }
 
-uninit :: (set: *$T/HashSet, freeSet: bool = false) {
-    if (set.entries) {
-        clear(set);
-        free(set.entries, set.allocator);
-    }
+uninit :: (set: *$T/SmallHashSet, freeSet: bool = false) {
+    clear(set);
 
     if (freeSet) {
         free(set, set.allocator);
     }
 }
 
-clear :: (set: *$T/HashSet) {
-    assert(set.entries != null);
-
+clear :: (set: *$T/SmallHashSet) {
     #insert #run () -> string {
         info := type_info(T.TItem);
 
@@ -115,27 +106,16 @@ clear :: (set: *$T/HashSet) {
     set.count = 0;
 }
 
-contains :: (set: *$T/HashSet, item: T.TItem) -> bool {
-    assert(set.entries != null);
-
+contains :: (set: *$T/SmallHashSet, item: T.TItem) -> bool {
     found := getEntry(set, item);
     return found;
 }
 
-add :: (set: *$T/HashSet, item: T.TItem) -> bool {
-    assert(set.entries != null);
-
-    load := cast(s64) (set.loadFactor * set.capacity);
-    if (set.count >= load) {
-        resize(set);
-    }
-
+add :: (set: *$T/SmallHashSet, item: T.TItem) -> bool {
     return insert(set, item);
 }
 
-removeItem :: (set: *$T/HashSet, item: T.TItem) {
-    assert(set.entries != null);
-
+removeItem :: (set: *$T/SmallHashSet, item: T.TItem) {
     found, entry := getEntry(set, item);
     if (found) {
         value := entry.item;
@@ -181,7 +161,7 @@ removeItem :: (set: *$T/HashSet, item: T.TItem) {
     }
 }
 
-for_expansion :: (set: *$T/HashSet, body: Code, flags: For_Flags) #expand {
+for_expansion :: (set: *$T/SmallHashSet, body: Code, flags: For_Flags) #expand {
     #assert(!(flags & .REVERSE));
 
     index := 0;
@@ -206,28 +186,7 @@ for_expansion :: (set: *$T/HashSet, body: Code, flags: For_Flags) #expand {
 
 #import "utils";
 
-resize :: (set: *$T/HashSet) {
-    oldCapacity := set.capacity;
-    oldEntries := set.entries;
-    oldFirstInOrder := set.firstInOrder;
-
-    set.capacity = oldCapacity * 2;
-    set.entries = alloc(HashSetEntry(T.TItem), count = set.capacity, allocator = set.allocator);
-    set.firstInOrder = -1;
-    set.lastInOrder = -1;
-    set.count = 0;
-
-    current := oldFirstInOrder;
-    while (current >= 0) {
-        entry := *oldEntries[current];
-        insert(set, entry.item);
-        current = entry.nextInOrder;
-    }
-
-    free(oldEntries, set.allocator);
-}
-
-insert :: (set: *$T/HashSet, item: T.TItem) -> bool {
+insert :: (set: *$T/SmallHashSet, item: T.TItem) -> bool {
     found, entry := getEntry(set, item);
     if (found) {
         return false;
@@ -283,7 +242,7 @@ insert :: (set: *$T/HashSet, item: T.TItem) -> bool {
     return true;
 }
 
-getEntry :: (set: *$T/HashSet, item: T.TItem) -> bool, *HashSetEntry(T.TItem) {
+getEntry :: (set: *$T/SmallHashSet, item: T.TItem) -> bool, *SmallHashSetEntry(T.TItem) {
     found := false;
 
     hash := set.hashFn(item) % set.capacity;
@@ -316,7 +275,7 @@ getEntry :: (set: *$T/HashSet, item: T.TItem) -> bool, *HashSetEntry(T.TItem) {
     return found, entry;
 }
 
-findEmptyEntry :: (set: *$T/HashSet, index: s64) -> s64 {
+findEmptyEntry :: (set: *$T/SmallHashSet, index: s64) -> s64 {
     for i : 0..set.capacity - 1 {
         entryIndex := (index + i) % set.capacity;
         if (!set.entries[entryIndex].active) {

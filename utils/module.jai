@@ -134,6 +134,18 @@ inRange :: inline (x: s32, min: s32, max: s32) -> bool {
     return x >= min && x < max;
 }
 
+KeyValuePair :: struct(TKey: Type, TValue: Type) {
+    key: TKey;
+    value: TValue;
+}
+
+createKeyValuePair :: inline (key: $TKey, value: $TValue) -> KeyValuePair(TKey, TValue) {
+    result: KeyValuePair(TKey, TValue) = ---;
+    result.key = key;
+    result.value = value;
+    return result;
+}
+
 #scope_module
 
 Basic :: #import "Basic";

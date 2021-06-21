@@ -19,10 +19,9 @@
 //
 // It defines a strongly-typed hash map of elements and its operations.
 //
-HashMap :: struct(TKey: Type, TValue: Type) {
+SmallHashMap :: struct(TKey: Type, TValue: Type, length: s64) {
     count: s64;
     capacity: s64;
-    loadFactor: float64;
     defaultValue: TValue;
     freeItems: bool;
     firstInOrder: s64;
@@ -30,10 +29,10 @@ HashMap :: struct(TKey: Type, TValue: Type) {
     allocator: Allocator;
     hashFn: (TKey) -> s64;
     equalsFn: (TKey, TKey) -> bool;
-    entries: *HashMapEntry(TKey, TValue);
+    entries: [length] SmallHashMapEntry(TKey, TValue);
 }
 
-HashMapEntry :: struct(TKey: Type, TValue: Type) {
+SmallHashMapEntry :: struct(TKey: Type, TValue: Type) {
     active: bool;
     hash: s64;
     idx: s64;
@@ -45,8 +44,7 @@ HashMapEntry :: struct(TKey: Type, TValue: Type) {
     value: TValue;
 }
 
-HashMapOptions :: struct(TKey: Type, TValue: Type) {
-    capacity: s64 = 8;
+SmallHashMapOptions :: struct(TKey: Type, TValue: Type, length: s64) {
     defaultValue: TValue;
     freeItems: bool;
     allocator: Allocator;
@@ -54,18 +52,16 @@ HashMapOptions :: struct(TKey: Type, TValue: Type) {
     equalsFn: (TKey, TKey) -> bool;
 }
 
-createMap :: ($TKey: Type, $TValue: Type, options: HashMapOptions(TKey, TValue)) -> HashMap(TKey, TValue) {
-    map: HashMap(TKey, TValue);
+createSmallMap :: ($TKey: Type, $TValue: Type, $length: s64, options: SmallHashMapOptions(TKey, TValue, length)) -> SmallHashMap(TKey, TValue, length) {
+    map: SmallHashMap(TKey, TValue, length);
     init(*map, options);
     return map;
 }
 
-init :: (map: *$T/HashMap, options: HashMapOptions(T.TKey, T.TValue)) {
-    assert(options.capacity > 0);
+init :: (map: *$T/SmallHashMap, options: SmallHashMapOptions(T.TKey, T.TValue, T.length)) {
     assert(options.hashFn != null);
 
-    map.capacity = options.capacity;
-    map.loadFactor = 0.8;
+    map.capacity = T.length;
     map.defaultValue = options.defaultValue;
     map.freeItems = options.freeItems;
     map.firstInOrder = -1;
@@ -74,23 +70,17 @@ init :: (map: *$T/HashMap, options: HashMapOptions(T.TKey, T.TValue)) {
     map.hashFn = options.hashFn;
     map.equalsFn = options.equalsFn;
     map.count = 0;
-    map.entries = alloc(HashMapEntry(T.TKey, T.TValue), count = map.capacity, allocator = map.allocator);
 }
 
-uninit :: (map: *$T/HashMap, freeMap: bool = false) {
-    if (map.entries) {
-        clear(map);
-        free(map.entries, map.allocator);
-    }
+uninit :: (map: *$T/SmallHashMap, freeMap: bool = false) {
+    clear(map);
 
     if (freeMap) {
         free(map, map.allocator);
     }
 }
 
-clear :: (map: *$T/HashMap) {
-    assert(map.entries != null);
-
+clear :: (map: *$T/SmallHashMap) {
     #insert #run () -> string {
         info := type_info(T.TValue);
 
@@ -116,16 +106,12 @@ clear :: (map: *$T/HashMap) {
     map.count = 0;
 }
 
-containsKey :: (map: *$T/HashMap, key: T.TKey) -> bool {
-    assert(map.entries != null);
-
+containsKey :: (map: *$T/SmallHashMap, key: T.TKey) -> bool {
     found := getEntry(map, key);
     return found;
 }
 
-get :: (map: *$T/HashMap, key: T.TKey) -> bool, T.TValue {
-    assert(map.entries != null);
-
+get :: (map: *$T/SmallHashMap, key: T.TKey) -> bool, T.TValue {
     found, entry := getEntry(map, key);
     if (found) {
         return true, entry.value;
@@ -133,9 +119,7 @@ get :: (map: *$T/HashMap, key: T.TKey) -> bool, T.TValue {
     return false, map.defaultValue;
 }
 
-ref :: (map: *$T/HashMap, key: T.TKey) -> bool, *T.TValue {
-    assert(map.entries != null);
-
+ref :: (map: *$T/SmallHashMap, key: T.TKey) -> bool, *T.TValue {
     found, entry := getEntry(map, key);
     if (found) {
         return true, *entry.value;
@@ -143,20 +127,11 @@ ref :: (map: *$T/HashMap, key: T.TKey) -> bool, *T.TValue {
     return false, null;
 }
 
-set :: (map: *$T/HashMap, key: T.TKey, value: T.TValue) {
-    assert(map.entries != null);
-
-    load := cast(s64) (map.loadFactor * map.capacity);
-    if (map.count >= load) {
-        resize(map);
-    }
-
+set :: (map: *$T/SmallHashMap, key: T.TKey, value: T.TValue) {
     insert(map, key, value);
 }
 
-removeKey :: (map: *$T/HashMap, key: T.TKey) {
-    assert(map.entries != null);
-
+removeKey :: (map: *$T/SmallHashMap, key: T.TKey) {
     found, entry := getEntry(map, key);
     if (found) {
         value := entry.value;
@@ -202,7 +177,7 @@ removeKey :: (map: *$T/HashMap, key: T.TKey) {
     }
 }
 
-getKeys :: (map: *$T/HashMap) -> [] T.TKey {
+getKeys :: (map: *$T/SmallHashMap) -> [] T.TKey {
     if (map.count == 0) {
         return T.TKey.[];
     }
@@ -222,7 +197,7 @@ getKeys :: (map: *$T/HashMap) -> [] T.TKey {
     return keys;
 }
 
-getValues :: (map: *$T/HashMap) -> [] T.Value {
+getValues :: (map: *$T/SmallHashMap) -> [] T.Value {
     if (map.count == 0) {
         return T.TValue.[];
     }
@@ -242,7 +217,7 @@ getValues :: (map: *$T/HashMap) -> [] T.Value {
     return values;
 }
 
-for_expansion :: (map: *$T/HashMap, body: Code, flags: For_Flags) #expand {
+for_expansion :: (map: *$T/SmallHashMap, body: Code, flags: For_Flags) #expand {
     #assert(!(flags & .REVERSE));
 
     index := 0;
@@ -273,28 +248,7 @@ for_expansion :: (map: *$T/HashMap, body: Code, flags: For_Flags) #expand {
 
 #import "utils";
 
-resize :: (map: *$T/HashMap) {
-    oldCapacity := map.capacity;
-    oldEntries := map.entries;
-    oldFirstInOrder := map.firstInOrder;
-
-    map.capacity = oldCapacity * 2;
-    map.entries = alloc(HashMapEntry(T.TKey, T.TValue), count = map.capacity, allocator = map.allocator);
-    map.firstInOrder = -1;
-    map.lastInOrder = -1;
-    map.count = 0;
-
-    current := oldFirstInOrder;
-    while (current >= 0) {
-        entry := *oldEntries[current];
-        insert(map, entry.key, entry.value);
-        current = entry.nextInOrder;
-    }
-
-    free(oldEntries, map.allocator);
-}
-
-insert :: (map: *$T/HashMap, key: T.TKey, value: T.TValue) {
+insert :: (map: *$T/SmallHashMap, key: T.TKey, value: T.TValue) {
     found, entry := getEntry(map, key);
     if (found) {
         currentValue := entry.value;
@@ -316,6 +270,8 @@ insert :: (map: *$T/HashMap, key: T.TKey, value: T.TValue) {
 
         return;
     }
+
+    assert(map.count < map.capacity);
 
     hash := map.hashFn(key) % map.capacity;
 
@@ -368,7 +324,7 @@ insert :: (map: *$T/HashMap, key: T.TKey, value: T.TValue) {
     map.count += 1;
 }
 
-getEntry :: (map: *$T/HashMap, key: T.TKey) -> bool, *HashMapEntry(T.TKey, T.TValue) {
+getEntry :: (map: *$T/SmallHashMap, key: T.TKey) -> bool, *SmallHashMapEntry(T.TKey, T.TValue) {
     found := false;
 
     hash := map.hashFn(key) % map.capacity;
@@ -401,7 +357,7 @@ getEntry :: (map: *$T/HashMap, key: T.TKey) -> bool, *HashMapEntry(T.TKey, T.TVa
     return found, entry;
 }
 
-findEmptyEntry :: (map: *$T/HashMap, index: s64) -> s64 {
+findEmptyEntry :: (map: *$T/SmallHashMap, index: s64) -> s64 {
     for i : 0..map.capacity - 1 {
         entryIndex := (index + i) % map.capacity;
         if (!map.entries[entryIndex].active) {
