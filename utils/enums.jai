@@ -1,25 +1,5 @@
-getCount :: inline ($enumType: Type) -> s64 {
-    ti := type_info(enumType);
-    return ti.values.count;
-}
-
-getInternalType :: ($enumType: Type) -> Type {
-    ti := type_info(enumType);
-    if (ti == type_info(s8)) return s8;
-    else if (ti == type_info(s8)) return u8;
-    else if (ti == type_info(s16)) return s16;
-    else if (ti == type_info(s16)) return u16;
-    else if (ti == type_info(s32)) return s32;
-    else if (ti == type_info(s32)) return u32;
-    else if (ti == type_info(s64)) return s64;
-    else if (ti == type_info(s64)) return u64;
-    else {
-        assert(false, "Enum type should be of integer type;");
-    }
-}
-
 hasFlags :: (value: $T, flags: T) -> bool {
-    #assert(isEnumFlags(type_info(T)));
+    #assert(isEnumFlags(T));
     return (value & flags) == flags;
 }
 

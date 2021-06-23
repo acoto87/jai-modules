@@ -202,18 +202,6 @@ for_expansion :: (str: *string, body: Code, flags: For_Flags) #expand {
 
 replace :: String.replace;
 
-fnvStrHash :: (str: string) -> s64 {
-    FNV_PRIME : u32 : 0x01000193;
-    FNV_OFFSET : u32 : 0x811c9dc5;
-
-    hash := FNV_OFFSET;
-    for i : 0..str.count-1 {
-        hash = (cast(u32) str[i] ^ hash) * FNV_PRIME;
-    }
-
-    return cast(s64) hash;
-}
-
 #scope_module
 
 Basic :: #import "Basic";

@@ -38,6 +38,7 @@ f64 :: float64;
 #load "enums.jai";
 #load "range.jai";
 #load "reflection.jai";
+#load "hash.jai";
 
 measure :: (message: string, code: Code, prev: Code = null, post: Code = null) #expand {
     print("--- Start % ---\n", message);
