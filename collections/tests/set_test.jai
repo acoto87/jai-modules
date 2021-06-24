@@ -11,14 +11,8 @@ testSet :: () {
 #import "strings";
 
 valueTypeTest :: ($count: s64 = 100000) {
-    options := HashSetOptions(s64).{
-        hashFn = (k: s64) -> s64 {
-            return k;
-        }
-    };
-
-    set := alloc(HashSet(s64));
-    init(set, options);
+    set := alloc(HashSet(s64, true));
+    init(set, HashSetOptions(s64).{});
 
     measure(sprint("test 1: add % objects", count), #code {
         for i : 0..count-1 {
@@ -58,6 +52,8 @@ valueTypeTest :: ($count: s64 = 100000) {
 }
 
 referenceTypeTest :: ($count: s64 = 100000) {
+    randomSeed(3323, 1212);
+
     generateString :: () -> string {
         stringLength :: 50;
 
@@ -78,23 +74,12 @@ referenceTypeTest :: ($count: s64 = 100000) {
     }
 
     options := HashSetOptions(string).{
-        hashFn = (k: string) -> s64 {
-            FNV_PRIME : u32 : 0x01000193;
-            FNV_OFFSET : u32 : 0x811c9dc5;
-
-            hash := FNV_OFFSET;
-            for i : 0..k.count-1 {
-                hash = (cast(u32) k[i] ^ hash) * FNV_PRIME;
-            }
-
-            return cast(s64) hash;
-        },
         equalsFn = (s1: string, s2: string) -> bool {
             return equals(s1, s2);
         }
     };
 
-    set := alloc(HashSet(string));
+    set := alloc(HashSet(string, true));
     init(set, options);
 
     measure(sprint("test 1: add % objects", count), #code {

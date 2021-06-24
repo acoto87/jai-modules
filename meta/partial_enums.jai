@@ -35,8 +35,6 @@ partialEnums: HashMap(string, *List(*CodeDeclaration));
 registerPartialEnum :: (enumName: string, decl: *CodeDeclaration) {
     if (partialEnums.entries == null) {
         options: HashMapOptions(string, *List(*CodeDeclaration));
-        options.hashFn = fnvStrHash;
-
         init(*partialEnums, options);
     }
 

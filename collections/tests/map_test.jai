@@ -11,14 +11,8 @@ testMap :: () {
 #import "strings";
 
 valueTypeTest :: ($count: s64 = 100000) {
-    options := HashMapOptions(s64, s64).{
-        hashFn = (k: s64) -> s64 {
-            return k;
-        }
-    };
-
-    map := alloc(HashMap(s64, s64));
-    init(map, options);
+    map := alloc(HashMap(s64, s64, true));
+    init(map, HashMapOptions(s64, s64).{});
 
     measure(sprint("test 1: add % objects", count), #code {
         for i : 0..count-1 {
@@ -115,23 +109,12 @@ referenceTypeTest :: ($count: s64 = 100000) {
     }
 
     options := HashMapOptions(string, string).{
-        hashFn = (k: string) -> s64 {
-            FNV_PRIME : u32 : 0x01000193;
-            FNV_OFFSET : u32 : 0x811c9dc5;
-
-            hash := FNV_OFFSET;
-            for i : 0..k.count-1 {
-                hash = (cast(u32) k[i] ^ hash) * FNV_PRIME;
-            }
-
-            return cast(s64) hash;
-        },
         equalsFn = (s1: string, s2: string) -> bool {
             return equals(s1, s2);
         }
     };
 
-    map := alloc(HashMap(string, string));
+    map := alloc(HashMap(string, string, true));
     init(map, options);
 
     measure(sprint("test 1: add % objects", count), #code {

@@ -36,10 +36,6 @@ proceduresToRunByPhases: HashMap(u32, *List(*CodeProcedureHeader));
 registerToRun :: (phase: u32, procedureHeader: *CodeProcedureHeader) {
     if (proceduresToRunByPhases.entries == null) {
         options: HashMapOptions(u32, *List(*CodeProcedureHeader));
-        options.hashFn = (phase: u32) -> s64 {
-            return cast(s64) phase;
-        };
-
         init(*proceduresToRunByPhases, options);
     }
 

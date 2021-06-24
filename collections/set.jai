@@ -19,67 +19,92 @@
 //
 // It defines a strongly-typed hash set of elements and its operations.
 //
-HashSet :: struct(TItem: Type) {
+HashSet :: struct(TItem: Type, Sorted := false, MaxCapacity := 0) {
     count: s64;
     capacity: s64;
-    loadFactor: float64;
+    #if MaxCapacity == 0 {
+        loadFactor: f64;
+    }
     defaultValue: TItem;
     freeItems: bool;
-    firstInOrder: s64;
-    lastInOrder: s64;
+    #if Sorted {
+        firstInOrder: s64;
+        lastInOrder: s64;
+    }
     allocator: Allocator;
-    hashFn: (TItem) -> s64;
+    hashFn: (TItem) -> u64;
     equalsFn: (TItem, TItem) -> bool;
-    entries: *HashSetEntry(TItem);
-}
-
-HashSetEntry :: struct(TItem: Type) {
-    active: bool;
-    hash: s64;
-    idx: s64;
-    prev: s64;
-    next: s64;
-    prevInOrder: s64;
-    nextInOrder: s64;
-    item: TItem;
+    #if MaxCapacity > 0 {
+        entries: [MaxCapacity] HashSetEntry(TItem, Sorted);
+    } else {
+        entries: *HashSetEntry(TItem, Sorted);
+    }
 }
 
 HashSetOptions :: struct(TItem: Type) {
     capacity: s64 = 8;
+    loadFactor: f64 = 0.8;
     defaultValue: TItem;
     freeItems: bool;
     allocator: Allocator;
-    hashFn: (TItem) -> s64;
+    hashFn: (TItem) -> u64;
     equalsFn: (TItem, TItem) -> bool;
 }
 
-createHashSet :: ($T: Type, options: HashSetOptions(T)) -> HashSet(T) {
-    set: HashSet(T);
+createHashSet :: ($T: Type, $Sorted := false, $MaxCapacity := 0) -> HashSet(T, Sorted, MaxCapacity) {
+    set: HashSet(T, Sorted, MaxCapacity);
+    init(*set);
+    return set;
+}
+
+createHashSet :: ($T: Type, $Sorted := false, $MaxCapacity := 0, options: HashSetOptions(T)) -> HashSet(T, Sorted, MaxCapacity) {
+    set: HashSet(T, Sorted, MaxCapacity);
     init(*set, options);
     return set;
 }
 
-init :: (set: *$T/HashSet, options: HashSetOptions(T.TItem)) {
-    assert(options.capacity > 0);
-    assert(options.hashFn != null);
+init :: (set: *$T/HashSet) {
+    init(*set, HashSetOptions(T.TItem).{});
+}
 
-    set.capacity = options.capacity;
-    set.loadFactor = 0.8;
+init :: (set: *$T/HashSet, options: HashSetOptions(T.TItem)) {
+    #if T.MaxCapacity == 0 {
+        assert(options.capacity > 0);
+        set.capacity = options.capacity;
+    } else {
+        set.capacity = T.MaxCapacity;
+    }
+
+    #if T.MaxCapacity == 0 {
+        assert(options.loadFactor > 0 && options.loadFactor <= 1);
+        set.loadFactor = options.loadFactor;
+    }
     set.defaultValue = options.defaultValue;
     set.freeItems = options.freeItems;
-    set.firstInOrder = -1;
-    set.lastInOrder = -1;
+    #if T.Sorted {
+        set.firstInOrder = -1;
+        set.lastInOrder = -1;
+    }
     set.allocator = options.allocator;
     set.hashFn = options.hashFn;
+    if (set.hashFn == null) {
+        set.hashFn = defaultHashFn(T.TItem);
+        assert(set.hashFn != null);
+    }
     set.equalsFn = options.equalsFn;
     set.count = 0;
-    set.entries = alloc(HashSetEntry(T.TItem), count = set.capacity, allocator = set.allocator);
+    #if T.MaxCapacity == 0 {
+        set.entries = alloc(HashSetEntry(T.TItem, T.Sorted), count = set.capacity, allocator = set.allocator);
+    }
 }
 
 uninit :: (set: *$T/HashSet, freeSet: bool = false) {
     if (set.entries) {
         clear(set);
-        free(set.entries, set.allocator);
+
+        #if T.MaxCapacity > 0 {
+            free(set.entries, set.allocator);
+        }
     }
 
     if (freeSet) {
@@ -88,7 +113,9 @@ uninit :: (set: *$T/HashSet, freeSet: bool = false) {
 }
 
 clear :: (set: *$T/HashSet) {
-    assert(set.entries != null);
+    #if T.MaxCapacity == 0 {
+        assert(set.entries != null);
+    }
 
     #insert #run () -> string {
         info := type_info(T.TItem);
@@ -98,7 +125,6 @@ clear :: (set: *$T/HashSet) {
                 if (set.freeItems) {
                     for i : 0..set.capacity - 1 {
                         entry := *set.entries[i];
-
                         if (entry.active) {
                             free(entry.item, set.allocator);
                             entry.value = set.defaultValue;
@@ -116,25 +142,31 @@ clear :: (set: *$T/HashSet) {
 }
 
 contains :: (set: *$T/HashSet, item: T.TItem) -> bool {
-    assert(set.entries != null);
+    #if T.MaxCapacity == 0 {
+        assert(set.entries != null);
+    }
 
     found := getEntry(set, item);
     return found;
 }
 
 add :: (set: *$T/HashSet, item: T.TItem) -> bool {
-    assert(set.entries != null);
+    #if T.MaxCapacity == 0 {
+        assert(set.entries != null);
 
-    load := cast(s64) (set.loadFactor * set.capacity);
-    if (set.count >= load) {
-        resize(set);
+        load := cast(s64) (set.loadFactor * set.capacity);
+        if (set.count >= load) {
+            resize(set);
+        }
     }
 
     return insert(set, item);
 }
 
 removeItem :: (set: *$T/HashSet, item: T.TItem) {
-    assert(set.entries != null);
+    #if T.MaxCapacity == 0 {
+        assert(set.entries != null);
+    }
 
     found, entry := getEntry(set, item);
     if (found) {
@@ -150,14 +182,16 @@ removeItem :: (set: *$T/HashSet, item: T.TItem) {
             nextEntry.prev = entry.prev;
         }
 
-        if (entry.prevInOrder >= 0) {
-            prevEntryInOrder := *set.entries[entry.prevInOrder];
-            prevEntryInOrder.nextInOrder = entry.nextInOrder;
-        }
+        #if T.Sorted {
+            if (entry.prevInOrder >= 0) {
+                prevEntryInOrder := *set.entries[entry.prevInOrder];
+                prevEntryInOrder.nextInOrder = entry.nextInOrder;
+            }
 
-        if (entry.nextInOrder >= 0) {
-            nextEntryInOrder := *set.entries[entry.nextInOrder];
-            nextEntryInOrder.prevInOrder = entry.prevInOrder;
+            if (entry.nextInOrder >= 0) {
+                nextEntryInOrder := *set.entries[entry.nextInOrder];
+                nextEntryInOrder.prevInOrder = entry.prevInOrder;
+            }
         }
 
         entry.item = set.defaultValue;
@@ -182,23 +216,47 @@ removeItem :: (set: *$T/HashSet, item: T.TItem) {
 }
 
 for_expansion :: (set: *$T/HashSet, body: Code, flags: For_Flags) #expand {
+    #if T.MaxCapacity == 0 {
+        assert(set.entries != null);
+    }
+
     #assert(!(flags & .REVERSE));
 
-    index := 0;
-    current := set.firstInOrder;
-    while (current >= 0) {
-        entry := *set.entries[current];
-        #if flags & .POINTER {
-            `it := *entry.item;
-        } else {
-            `it := entry.item;
+    #if T.Sorted {
+        index := 0;
+        current := set.firstInOrder;
+        while (current >= 0) {
+            entry := *set.entries[current];
+            #if flags & .POINTER {
+                `it := *entry.item;
+            } else {
+                `it := entry.item;
+            }
+            `it_index := index;
+
+            #insert (remove=assert(false)) body;
+
+            current = entry.nextInOrder;
+            index += 1;
         }
-        `it_index := index;
+    } else {
+        index := 0;
+        for i : 0..set.capacity-1 {
+            entry := *set.entries[i];
+            if (!entry.active) {
+                continue;
+            }
+            #if flags & .POINTER {
+                `it := *entry.item;
+            } else {
+                `it := entry.item;
+            }
+            `it_index := index;
 
-        #insert (remove=assert(false)) body;
+            #insert (remove=assert(false)) body;
 
-        current = entry.nextInOrder;
-        index += 1;
+            index += 1;
+        }
     }
 }
 
@@ -206,22 +264,50 @@ for_expansion :: (set: *$T/HashSet, body: Code, flags: For_Flags) #expand {
 
 #import "utils";
 
+HashSetEntry :: struct(TItem: Type, Sorted := false) {
+    active: bool;
+    hash: u64;
+    idx: s64;
+    prev: s64;
+    next: s64;
+    #if Sorted {
+        prevInOrder: s64;
+        nextInOrder: s64;
+    }
+    item: TItem;
+}
+
 resize :: (set: *$T/HashSet) {
+    #assert(T.MaxCapacity == 0);
+
     oldCapacity := set.capacity;
     oldEntries := set.entries;
-    oldFirstInOrder := set.firstInOrder;
+    #if T.Sorted {
+        oldFirstInOrder := set.firstInOrder;
+    }
 
     set.capacity = oldCapacity * 2;
-    set.entries = alloc(HashSetEntry(T.TItem), count = set.capacity, allocator = set.allocator);
-    set.firstInOrder = -1;
-    set.lastInOrder = -1;
+    set.entries = alloc(HashSetEntry(T.TItem, T.Sorted), count = set.capacity, allocator = set.allocator);
+    #if T.Sorted {
+        set.firstInOrder = -1;
+        set.lastInOrder = -1;
+    }
     set.count = 0;
 
-    current := oldFirstInOrder;
-    while (current >= 0) {
-        entry := *oldEntries[current];
-        insert(set, entry.item);
-        current = entry.nextInOrder;
+    #if T.Sorted {
+        current := oldFirstInOrder;
+        while (current >= 0) {
+            entry := *oldEntries[current];
+            insert(set, entry.item);
+            current = entry.nextInOrder;
+        }
+    } else {
+        for i : 0..oldCapacity-1 {
+            entry := *oldEntries[i];
+            if (entry.active) {
+                insert(set, entry.item);
+            }
+        }
     }
 
     free(oldEntries, set.allocator);
@@ -233,7 +319,7 @@ insert :: (set: *$T/HashSet, item: T.TItem) -> bool {
         return false;
     }
 
-    hash := set.hashFn(item) % set.capacity;
+    hash := set.hashFn(item) % cast(u64) set.capacity;
 
     if (entry.active) {
         next := findEmptyEntry(set, 0);
@@ -247,47 +333,55 @@ insert :: (set: *$T/HashSet, item: T.TItem) -> bool {
         nextEntry.idx = next;
         nextEntry.prev = entry.idx;
         nextEntry.next = -1;
-        nextEntry.prevInOrder = set.lastInOrder;
-        nextEntry.nextInOrder = -1;
+        #if T.Sorted {
+            nextEntry.prevInOrder = set.lastInOrder;
+            nextEntry.nextInOrder = -1;
+        }
         nextEntry.item = item;
 
-        if (set.lastInOrder >= 0) {
-            lastEntryInOrder := *set.entries[set.lastInOrder];
-            lastEntryInOrder.nextInOrder = next;
-        }
+        #if T.Sorted {
+            if (set.lastInOrder >= 0) {
+                lastEntryInOrder := *set.entries[set.lastInOrder];
+                lastEntryInOrder.nextInOrder = next;
+            }
 
-        set.lastInOrder = next;
+            set.lastInOrder = next;
+        }
     } else {
         entry.active = true;
         entry.hash = hash;
-        entry.idx = hash;
+        entry.idx = cast(s64) hash;
         entry.prev = -1;
         entry.next = -1;
-        entry.prevInOrder = set.lastInOrder;
-        entry.nextInOrder = -1;
+        #if T.Sorted {
+            entry.prevInOrder = set.lastInOrder;
+            entry.nextInOrder = -1;
+        }
         entry.item = item;
 
-        if (set.firstInOrder < 0) {
-            set.firstInOrder = hash;
-        }
+        #if T.Sorted {
+            if (set.firstInOrder < 0) {
+                set.firstInOrder = cast(s64) hash;
+            }
 
-        if (set.lastInOrder >= 0) {
-            lastEntryInOrder := *set.entries[set.lastInOrder];
-            lastEntryInOrder.nextInOrder = hash;
-        }
+            if (set.lastInOrder >= 0) {
+                lastEntryInOrder := *set.entries[set.lastInOrder];
+                lastEntryInOrder.nextInOrder = cast(s64) hash;
+            }
 
-        set.lastInOrder = hash;
+            set.lastInOrder = cast(s64) hash;
+        }
     }
 
     set.count += 1;
     return true;
 }
 
-getEntry :: (set: *$T/HashSet, item: T.TItem) -> bool, *HashSetEntry(T.TItem) {
+getEntry :: (set: *$T/HashSet, item: T.TItem) -> bool, *HashSetEntry(T.TItem, T.Sorted) {
     found := false;
 
-    hash := set.hashFn(item) % set.capacity;
-    index := hash;
+    hash := set.hashFn(item) % cast(u64) set.capacity;
+    index := cast(s64) hash;
 
     entry := *set.entries[index];
     while (entry.active) {
