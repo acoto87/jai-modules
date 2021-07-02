@@ -19,13 +19,10 @@
 //
 // It defines a strongly-typed hash map of elements and its operations.
 //
-HashMap :: struct(TKey: Type, TValue: Type, Sorted := false, MaxCapacity := 0) {
+HashMap :: struct(TKey: Type, TValue: Type, Sorted := false) {
     count: s64;
     capacity: s64;
-    #if MaxCapacity == 0 {
-        loadFactor: f64;
-    }
-    defaultValue: TValue;
+    loadFactor: f64;
     freeItems: bool;
     #if Sorted {
         firstInOrder: s64;
@@ -34,52 +31,41 @@ HashMap :: struct(TKey: Type, TValue: Type, Sorted := false, MaxCapacity := 0) {
     allocator: Allocator;
     hashFn: (TKey) -> u64;
     equalsFn: (TKey, TKey) -> bool;
-    #if MaxCapacity > 0 {
-        entries: [MaxCapacity] HashMapEntry(TKey, TValue, Sorted);
-    } else {
-        entries: *HashMapEntry(TKey, TValue, Sorted);
-    }
+    entries: *HashMapEntry(TKey, TValue, Sorted);
 }
 
 HashMapOptions :: struct(TKey: Type, TValue: Type) {
     capacity: s64 = 8;
     loadFactor: f64 = 0.8;
-    defaultValue: TValue;
     freeItems: bool;
     allocator: Allocator;
     hashFn: (TKey) -> u64;
     equalsFn: (TKey, TKey) -> bool;
 }
 
-createMap :: ($TKey: Type, $TValue: Type, $Sorted := false, $MaxCapacity := 0) -> HashMap(TKey, TValue, Sorted, MaxCapacity) {
-    map: HashMap(TKey, TValue, Sorted, MaxCapacity);
+createMap :: ($TKey: Type, $TValue: Type, $Sorted := false) -> HashMap(TKey, TValue, Sorted) {
+    map: HashMap(TKey, TValue, Sorted);
     init(*map);
     return map;
 }
 
-createMap :: ($TKey: Type, $TValue: Type, $Sorted := false, $MaxCapacity := 0, options: HashMapOptions(TKey, TValue)) -> HashMap(TKey, TValue, Sorted, MaxCapacity) {
-    map: HashMap(TKey, TValue, Sorted, MaxCapacity);
+createMap :: ($TKey: Type, $TValue: Type, $Sorted := false, options: HashMapOptions(TKey, TValue)) -> HashMap(TKey, TValue, Sorted) {
+    map: HashMap(TKey, TValue, Sorted);
     init(*map, options);
     return map;
 }
 
 init :: (map: *$T/HashMap) {
-    init(*map, HashMapOptions(T.TKey, T.TValue).{});
+    init(map, HashMapOptions(T.TKey, T.TValue).{});
 }
 
 init :: (map: *$T/HashMap, options: HashMapOptions(T.TKey, T.TValue)) {
-    #if T.MaxCapacity == 0 {
-        assert(options.capacity > 0);
-        map.capacity = options.capacity;
-    } else {
-        map.capacity = T.MaxCapacity;
-    }
+    assert(options.capacity > 0);
+    assert(options.loadFactor > 0 && options.loadFactor <= 1);
 
-    #if T.MaxCapacity == 0 {
-        assert(options.loadFactor > 0 && options.loadFactor <= 1);
-        map.loadFactor = options.loadFactor;
-    }
-    map.defaultValue = options.defaultValue;
+    map.count = 0;
+    map.capacity = options.capacity;
+    map.loadFactor = options.loadFactor;
     map.freeItems = options.freeItems;
     #if T.Sorted {
         map.firstInOrder = -1;
@@ -87,24 +73,14 @@ init :: (map: *$T/HashMap, options: HashMapOptions(T.TKey, T.TValue)) {
     }
     map.allocator = options.allocator;
     map.hashFn = options.hashFn;
-    if (map.hashFn == null) {
-        map.hashFn = defaultHashFn(T.TKey);
-        assert(map.hashFn != null);
-    }
     map.equalsFn = options.equalsFn;
-    map.count = 0;
-    #if T.MaxCapacity == 0 {
-        map.entries = alloc(HashMapEntry(T.TKey, T.TValue, T.Sorted), count = map.capacity, allocator = map.allocator);
-    }
+    map.entries = alloc(HashMapEntry(T.TKey, T.TValue, T.Sorted), count = map.capacity, allocator = map.allocator);
 }
 
 uninit :: (map: *$T/HashMap, freeMap: bool = false) {
     if (map.entries) {
         clear(map);
-
-        #if T.MaxCapacity > 0 {
-            free(map.entries, map.allocator);
-        }
+        free(map.entries, map.allocator);
     }
 
     if (freeMap) {
@@ -113,59 +89,42 @@ uninit :: (map: *$T/HashMap, freeMap: bool = false) {
 }
 
 clear :: (map: *$T/HashMap) {
-    #if T.MaxCapacity == 0 {
-        assert(map.entries != null);
-    }
+    assert(map.entries != null);
 
-    #insert #run () -> string {
-        info := type_info(T.TValue);
-
-        if (info.type == Type_Info_Tag.POINTER) {
-            return #string DONE
-                if (map.freeItems) {
-                    for i : 0..map.capacity - 1 {
-                        entry := *map.entries[i];
-                        if (entry.active) {
-                            free(entry.value, map.allocator);
-                            entry.value = map.defaultValue;
-                            entry.active = false;
-                        }
-                    }
+    #if #run isPointer(T.TValue) {
+        if (map.freeItems) {
+            for i : 0..map.capacity - 1 {
+                entry := *map.entries[i];
+                if (entry.active) {
+                    free(entry.value, map.allocator);
+                    entry.value = default_of(T.TValue);
+                    entry.active = false;
                 }
-            DONE;
+            }
         }
-
-        return "";
-    }();
+    }
 
     map.count = 0;
 }
 
 containsKey :: (map: *$T/HashMap, key: T.TKey) -> bool {
-    #if T.MaxCapacity == 0 {
-        assert(map.entries != null);
-    }
-
+    assert(map.entries != null);
     found := getEntry(map, key);
     return found;
 }
 
 get :: (map: *$T/HashMap, key: T.TKey) -> bool, T.TValue {
-    #if T.MaxCapacity == 0 {
-        assert(map.entries != null);
-    }
+    assert(map.entries != null);
 
     found, entry := getEntry(map, key);
     if (found) {
         return true, entry.value;
     }
-    return false, map.defaultValue;
+    return false, default_of(T.TValue);
 }
 
 ref :: (map: *$T/HashMap, key: T.TKey) -> bool, *T.TValue {
-    #if T.MaxCapacity == 0 {
-        assert(map.entries != null);
-    }
+    assert(map.entries != null);
 
     found, entry := getEntry(map, key);
     if (found) {
@@ -175,22 +134,29 @@ ref :: (map: *$T/HashMap, key: T.TKey) -> bool, *T.TValue {
 }
 
 set :: (map: *$T/HashMap, key: T.TKey, value: T.TValue) {
-    #if T.MaxCapacity == 0 {
-        assert(map.entries != null);
+    assert(map.entries != null);
 
-        load := cast(s64) (map.loadFactor * map.capacity);
-        if (map.count >= load) {
-            resize(map);
-        }
+    load := cast(s64) (map.loadFactor * map.capacity);
+    if (map.count >= load) {
+        resize(map);
     }
 
     insertOrUpdate(map, key, value);
 }
 
-removeKey :: (map: *$T/HashMap, key: T.TKey) {
-    #if T.MaxCapacity == 0 {
-        assert(map.entries != null);
+setNew :: (map: *$T/HashMap, key: T.TKey) -> *T.TValue {
+    assert(map.entries != null);
+
+    load := cast(s64) (map.loadFactor * map.capacity);
+    if (map.count >= load) {
+        resize(map);
     }
+
+    return insertOrUpdateNew(map, key);
+}
+
+removeKey :: (map: *$T/HashMap, key: T.TKey) {
+    assert(map.entries != null);
 
     found, entry := getEntry(map, key);
     if (found) {
@@ -218,31 +184,21 @@ removeKey :: (map: *$T/HashMap, key: T.TKey) {
             }
         }
 
-        entry.value = map.defaultValue;
+        entry.value = default_of(T.TValue);
         entry.active = false;
 
-        #insert #run () -> string {
-            info := type_info(T.TValue);
-
-            if (info.type == Type_Info_Tag.POINTER) {
-                return #string DONE
-                    if (map.freeItems) {
-                        free(value, map.allocator);
-                    }
-                DONE;
+        #if #run isPointer(T.TValue) {
+            if (map.freeItems) {
+                free(value, map.allocator);
             }
-
-            return "";
-        }();
+        }
 
         map.count -= 1;
     }
 }
 
 getKeys :: (map: *$T/HashMap) -> [] T.TKey {
-    #if T.MaxCapacity == 0 {
-        assert(map.entries != null);
-    }
+    assert(map.entries != null);
 
     if (map.count == 0) {
         return T.TKey.[];
@@ -275,9 +231,7 @@ getKeys :: (map: *$T/HashMap) -> [] T.TKey {
 }
 
 getValues :: (map: *$T/HashMap) -> [] T.Value {
-    #if T.MaxCapacity == 0 {
-        assert(map.entries != null);
-    }
+    assert(map.entries != null);
 
     if (map.count == 0) {
         return T.TValue.[];
@@ -310,11 +264,9 @@ getValues :: (map: *$T/HashMap) -> [] T.Value {
 }
 
 for_expansion :: (map: *$T/HashMap, body: Code, flags: For_Flags) #expand {
-    #if T.MaxCapacity == 0 {
-        assert(map.entries != null);
-    }
-
     #assert(!(flags & .REVERSE));
+
+    assert(map.entries != null);
 
     #if T.Sorted {
         index := 0;
@@ -385,8 +337,6 @@ HashMapEntry :: struct(TKey: Type, TValue: Type, Sorted := false) {
 }
 
 resize :: (map: *$T/HashMap) {
-    #assert(T.MaxCapacity == 0);
-
     oldCapacity := map.capacity;
     oldEntries := map.entries;
     #if T.Sorted {
@@ -426,26 +376,18 @@ insertOrUpdate :: (map: *$T/HashMap, key: T.TKey, value: T.TValue) {
         currentValue := entry.value;
         entry.value = value;
 
-        #insert #run () -> string {
-            info := type_info(T.TValue);
-
-            if (info.type == Type_Info_Tag.POINTER) {
-                return #string DONE
-                    if (map.freeItems) {
-                        free(currentValue, map.allocator);
-                    }
-                DONE;
+        #if #run isPointer(T.TValue) {
+            if (map.freeItems) {
+                free(currentValue, map.allocator);
             }
-
-            return "";
-        }();
+        }
 
         return;
     }
 
     assert(map.count < map.capacity);
 
-    hash := map.hashFn(key) % cast(u64) map.capacity;
+    hash := hashKey(map, key) % cast(u64) map.capacity;
 
     if (entry.active) {
         next := findEmptyEntry(map, 0);
@@ -505,10 +447,94 @@ insertOrUpdate :: (map: *$T/HashMap, key: T.TKey, value: T.TValue) {
     map.count += 1;
 }
 
+insertOrUpdateNew :: (map: *$T/HashMap, key: T.TKey) -> *T.TValue {
+    found, entry := getEntry(map, key);
+    if (found) {
+        currentValue := entry.value;
+        entry.value = createInstance(T.TValue);
+
+        #if #run isPointer(T.TValue) {
+            if (map.freeItems) {
+                free(currentValue, map.allocator);
+            }
+        }
+
+        return *entry.value;
+    }
+
+    assert(map.count < map.capacity);
+
+    hash := hashKey(map, key) % cast(u64) map.capacity;
+
+    value: *T.TValue;
+
+    if (entry.active) {
+        next := findEmptyEntry(map, 0);
+        assert(next >= 0 && next < map.capacity);
+
+        entry.next = next;
+
+        nextEntry := *map.entries[next];
+        nextEntry.active = true;
+        nextEntry.hash = hash;
+        nextEntry.idx = next;
+        nextEntry.prev = entry.idx;
+        nextEntry.next = -1;
+        #if T.Sorted {
+            nextEntry.prevInOrder = map.lastInOrder;
+            nextEntry.nextInOrder = -1;
+        }
+
+        nextEntry.key = key;
+        nextEntry.value = createInstance(T.TValue);
+
+        #if T.Sorted {
+            if (map.lastInOrder >= 0) {
+                lastEntryInOrder := *map.entries[map.lastInOrder];
+                lastEntryInOrder.nextInOrder = next;
+            }
+
+            map.lastInOrder = next;
+        }
+
+        value = *nextEntry.value;
+    } else {
+        entry.active = true;
+        entry.hash = hash;
+        entry.idx = cast(s64) hash;
+        entry.prev = -1;
+        entry.next = -1;
+        #if T.Sorted {
+            entry.prevInOrder = map.lastInOrder;
+            entry.nextInOrder = -1;
+        }
+        entry.key = key;
+        entry.value = createInstance(T.TValue);
+
+        #if T.Sorted {
+            if (map.firstInOrder < 0) {
+                map.firstInOrder = cast(s64) hash;
+            }
+
+            if (map.lastInOrder >= 0) {
+                lastEntryInOrder := *map.entries[map.lastInOrder];
+                lastEntryInOrder.nextInOrder = cast(s64) hash;
+            }
+
+            map.lastInOrder = cast(s64) hash;
+        }
+
+        value = *entry.value;
+    }
+
+    map.count += 1;
+    return value;
+}
+
 getEntry :: (map: *$T/HashMap, key: T.TKey) -> bool, *HashMapEntry(T.TKey, T.TValue, T.Sorted) {
     found := false;
 
-    hash := map.hashFn(key) % cast(u64) map.capacity;
+    hash := hashKey(map, key) % cast(u64) map.capacity;
     index := cast(s64) hash;
 
     entry := *map.entries[index];
@@ -547,4 +573,8 @@ findEmptyEntry :: (map: *$T/HashMap, index: s64) -> s64 {
     }
 
     return -1;
+}
+
+hashKey :: (map: *$T/HashMap, key: T.TKey) -> u64 {
+    return ifx map.hashFn != null then map.hashFn(key) else defaultHash(key);
 }

@@ -39,6 +39,7 @@ f64 :: float64;
 #load "range.jai";
 #load "reflection.jai";
 #load "hash.jai";
+#load "io.jai";
 
 measure :: (message: string, code: Code, prev: Code = null, post: Code = null) #expand {
     print("--- Start % ---\n", message);

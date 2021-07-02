@@ -26,11 +26,10 @@ StableList :: struct(TItem: Type) {
     count: s64;
     capacity: s64;
     freeItems: bool;
-    allocator: Allocator;
-    items: *TItem;
     freeStart: s64;
     freeEnd: s64;
-    free: *s64;
+    allocator: Allocator;
+    entries: *StableListEntry(TItem);
 }
 
 StableListOptions :: struct(TItem: Type) {
@@ -62,20 +61,19 @@ init :: (list: *$T/StableList, options: StableListOptions(T.TItem)) {
     list.capacity = options.capacity;
     list.freeItems = options.freeItems;
     list.allocator = options.allocator;
-    list.items = alloc(T.TItem, list.capacity, list.allocator, initialized = false);
-    list.free = alloc(s64, list.capacity, list.allocator, initialized = false);
+    list.entries = alloc(StableListEntry(T.TItem), list.capacity, list.allocator, initialized = false);
     for i : 0..list.capacity-2 {
-        list.free[i] = i + 1;
+        list.entries[i].next = i + 1;
     }
-    list.free[list.capacity-1] = 0;
+    list.entries[list.capacity - 1].next = 0;
     list.freeStart = 0;
-    list.freeEnd = list.capacity-1;
+    list.freeEnd = list.capacity - 1;
 }
 
 uninit :: (list: *$T/StableList, freeList: bool = false) {
-    if (list.items) {
+    if (list.entries) {
         clear(list);
-        free(list.items, list.allocator);
+        free(list.entries, list.allocator);
         free(list.free);
     }
 
@@ -85,37 +83,29 @@ uninit :: (list: *$T/StableList, freeList: bool = false) {
 }
 
 clear :: (list: *$T/StableList) {
-    assert(list.items != null);
+    assert(list.entries != null);
 
-    #insert #run () -> string {
-        info := type_info(T.TItem);
-
-        if (info.type == Type_Info_Tag.POINTER) {
-            return #string DONE
-                if (list.freeItems) {
-                    for i : 0..list.capacity-1 {
-                        if (list.free[i] < 0) {
-                            free(list.items[i], list.allocator);
-                        }
-                    }
+    #if #run isPointer(T.TItem) {
+        if (list.freeItems) {
+            for i : 0..list.capacity-1 {
+                if (list.entries[i].next < 0) {
+                    free(list.entries[i].item, list.allocator);
                 }
-            DONE;
+            }
         }
-
-        return "";
-    }();
+    }
 
     for i : 0..list.capacity-2 {
-        list.free[i] = i + 1;
+        list.entries[i].next = i + 1;
     }
-    list.free[list.capacity-1] = 0;
+    list.entries[list.capacity - 1].next = 0;
     list.freeStart = 0;
-    list.freeEnd = list.capacity-1;
+    list.freeEnd = list.capacity - 1;
     list.count = 0;
 }
 
 add :: (list: *$T/StableList, item: T.TItem) -> s64 {
-    assert(list.items != null);
+    assert(list.entries != null);
 
     if (list.freeStart < 0) {
         resize(list, list.count + 1);
@@ -123,20 +113,20 @@ add :: (list: *$T/StableList, item: T.TItem) -> s64 {
 
     oldFreeStart := list.freeStart;
     if (list.count + 1 < list.capacity) {
-        list.freeStart = list.free[list.freeStart];
-        list.free[list.freeEnd] = list.freeStart;
+        list.freeStart = list.entries[list.freeStart].next;
+        list.entries[list.freeEnd].next = list.freeStart;
     } else {
         list.freeStart = -1;
         list.freeEnd = -1;
     }
-    list.items[oldFreeStart] = item;
-    list.free[oldFreeStart] = -1;
+    list.entries[oldFreeStart].item = item;
+    list.entries[oldFreeStart].next = -1;
     list.count += 1;
     return oldFreeStart;
 }
 
 addNew :: (list: *$T/StableList) -> s64, *T.TItem {
-    assert(list.items != null);
+    assert(list.entries != null);
 
     if (list.freeStart < 0) {
         resize(list, list.count + 1);
@@ -144,27 +134,17 @@ addNew :: (list: *$T/StableList) -> s64, *T.TItem {
 
     oldFreeStart := list.freeStart;
     if (list.count + 1 < list.capacity) {
-        list.freeStart = list.free[list.freeStart];
-        list.free[list.freeEnd] = list.freeStart;
+        list.freeStart = list.entries[list.freeStart].next;
+        list.entries[list.freeEnd].next = list.freeStart;
     } else {
         list.freeStart = -1;
         list.freeEnd = -1;
     }
 
-    #insert #run () -> Code {
-        info := type_info(T.TItem);
-
-        if (info.type == Type_Info_Tag.POINTER) {
-            return #code item := alloc(T.TItem);;
-        } else {
-            return #code item: T.TItem;;
-        }
-    }();
-
-    list.items[oldFreeStart] = item;
-    list.free[oldFreeStart] = -1;
+    list.entries[oldFreeStart].item = createInstance(T.TItem);
+    list.entries[oldFreeStart].next = -1;
     list.count += 1;
-    return oldFreeStart, *list.items[oldFreeStart];
+    return oldFreeStart, *list.entries[oldFreeStart].item;
 }
 
 addRange :: inline (list: *$T/StableList, items: ..T.TItem) {
@@ -174,12 +154,10 @@ addRange :: inline (list: *$T/StableList, items: ..T.TItem) {
 }
 
 indexOf :: (list: *$T/StableList, item: T.TItem) -> s64 {
-    assert(list.items != null);
+    assert(list.entries != null);
 
     for i : 0..list.capacity - 1 {
-        a := list.items[i];
-        f := list.free[i];
-        if (list.free[i] < 0 && list.items[i] == item) {
+        if (list.entries[i].next < 0 && list.entries[i].item == item) {
             return i;
         }
     }
@@ -188,11 +166,11 @@ indexOf :: (list: *$T/StableList, item: T.TItem) -> s64 {
 }
 
 indexOf :: (list: *$T/StableList, item: T.TItem, equalsFn: (T.TItem, T.TItem) -> bool) -> s64 {
-    assert(list.items != null);
+    assert(list.entries != null);
     assert(equalsFn != null);
 
     for i : 0..list.capacity - 1 {
-        if (list.free[i] < 0 && equalsFn(list.items[i], item)) {
+        if (list.entries[i].next < 0 && equalsFn(list.entries[i].item, item)) {
             return i;
         }
     }
@@ -223,57 +201,49 @@ removeItem :: inline (list: *$T/StableList, item: T.TItem, equalsFn: (T.TItem, T
 }
 
 removeAt :: inline (list: *$T/StableList, index: s64) {
-    assert(list.items != null);
+    assert(list.entries != null);
     assert(index >= 0 && index < list.capacity);
-    assert(list.free[index] < 0);
+    assert(list.entries[index].next < 0);
 
-    #insert #run () -> string {
-        info := type_info(T.TItem);
-
-        if (info.type == Type_Info_Tag.POINTER) {
-            return #string DONE
-                if (list.freeItems) {
-                    free(list.items[index], list.allocator);
-                }
-            DONE;
+    #if #run isPointer(T.TItem) {
+        if (list.freeItems) {
+            free(list.entries[index].item, list.allocator);
         }
-
-        return "";
-    }();
+    }
 
     if (list.freeStart >= 0) {
-        list.free[list.freeEnd] = index;
+        list.entries[list.freeEnd].next = index;
         list.freeEnd = index;
-        list.free[list.freeEnd] = list.freeStart;
+        list.entries[list.freeEnd].next = list.freeStart;
     } else {
-        list.free[index] = index;
+        list.entries[index].next = index;
         list.freeStart = index;
         list.freeEnd = index;
     }
 }
 
 isEmpty :: inline (list: *$T/StableList, index: s64) -> bool {
-    assert(list.items != null);
+    assert(list.entries != null);
     assert(index >= 0 && index < list.capacity);
-    return list.free[index] >= 0;
+    return list.entries[index].next >= 0;
 }
 
 ref :: (list: *$T/StableList, index: s64) -> *T.TItem {
     assert(index >= 0 && index < list.capacity);
-    assert(list.free[index] < 0);
-    return *list.items[index];
+    assert(list.entries[index].next < 0);
+    return *list.entries[index].item;
 }
 
 operator [] :: (list: *$T/StableList, index: s64) -> T.TItem {
     assert(index >= 0 && index < list.capacity);
-    assert(list.free[index] < 0);
-    return list.items[index];
+    assert(list.entries[index].next < 0);
+    return list.entries[index].item;
 }
 
 operator [] :: (list: $T/StableList, index: s64) -> T.TItem {
     assert(index >= 0 && index < list.capacity);
-    assert(list.free[index] < 0);
-    return list.items[index];
+    assert(list.entries[index].next < 0);
+    return list.entries[index].item;
 }
 
 fromArray :: inline (array: [] $T, options: StableListOptions(T)) -> StableList(T) {
@@ -289,8 +259,8 @@ toArray :: (list: *$T/StableList) -> [] T.TItem {
     array := allocArray(T.TItem, list.count, list.allocator);
     j := 0;
     for i : 0..list.capacity-1 {
-        if (list.free[i] < 0) {
-            array[j] = list.items[i];
+        if (list.entries[i].next < 0) {
+            array[j] = list.entries[i].item;
             j += 1;
         }
     }
@@ -300,23 +270,31 @@ toArray :: (list: *$T/StableList) -> [] T.TItem {
 for_expansion :: (list: *$T/StableList, body: Code, flags: For_Flags) #expand {
     #assert(!(flags & .REVERSE));
 
-    for i : 0..list.capacity-1 {
-        if (list.free[i] < 0) {
+    i := 0;
+    while (i < list.capacity) {
+        if (list.entries[i].next < 0) {
             #if flags & .POINTER {
-                `it := *list.items[i];
+                `it := *list.entries[i].item;
             } else {
-                `it := list.items[i];
+                `it := list.entries[i].item;
             }
             `it_index := i;
 
             #insert (remove=assert(false)) body;
         }
+        i += 1;
     }
 }
 
 #scope_file
 
 #import "utils";
+
+StableListEntry :: struct(TITem: Type) {
+    next: s64;      // Index in the list of the next free position if this one is empty.
+                    // It will have -1 if this position is occupied.
+    item: TITem;    // The item.
+}
 
 resize :: (list: *$T/StableList, minSize: s64) {
     oldCapacity := list.capacity;
@@ -326,13 +304,12 @@ resize :: (list: *$T/StableList, minSize: s64) {
         list.capacity = minSize;
     }
 
-    list.items = realloc(list.items, list.capacity, oldCapacity, list.allocator);
-    list.free = realloc(list.free, list.capacity, oldCapacity, list.allocator);
+    list.entries = realloc(list.entries, list.capacity, oldCapacity, list.allocator);
 
     for i : oldCapacity..list.capacity-2 {
-        list.free[i] = i + 1;
+        list.entries[i].next = i + 1;
     }
-    list.free[list.capacity-1] = oldCapacity;
+    list.entries[list.capacity - 1].next = oldCapacity;
     list.freeStart = oldCapacity;
-    list.freeEnd = list.capacity-1;
+    list.freeEnd = list.capacity - 1;
 }

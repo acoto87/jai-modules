@@ -73,21 +73,13 @@ uninit :: (list: *$T/List, freeList: bool = false) {
 clear :: (list: *$T/List) {
     assert(list.items != null);
 
-    #insert #run () -> string {
-        info := type_info(T.TItem);
-
-        if (info.type == Type_Info_Tag.POINTER) {
-            return #string DONE
-                if (list.freeItems) {
-                    for i : 0..list.count-1 {
-                        free(list.items[i], list.allocator);
-                    }
-                }
-            DONE;
+    #if #run isPointer(T.TItem) {
+        if (list.freeItems) {
+            for i : 0..list.count-1 {
+                free(list.items[i], list.allocator);
+            }
         }
-
-        return "";
-    }();
+    }
 
     list.count = 0;
 }
@@ -132,17 +124,7 @@ insertNew :: (list: *$T/List, index: s64) -> *T.TItem {
 
     memoryMove(list.items + index + 1, list.items + index, list.count - index);
 
-    #insert #run () -> Code {
-        info := type_info(T.TItem);
-
-        if (info.type == Type_Info_Tag.POINTER) {
-            return #code item := alloc(T.TItem);
-        } else {
-            return #code item: T.TItem;
-        }
-    }();
-
-    list.items[index] = item;
+    list.items[index] = createInstance(T.TItem);
     list.count = newCount;
 
     return *list.items[index];
@@ -256,21 +238,13 @@ removeAtRange :: (list: *$T/List, index: s64, count: s64) {
         return;
     }
 
-    #insert #run () -> string {
-        info := type_info(T.TItem);
-
-        if (info.type == Type_Info_Tag.POINTER) {
-            return #string DONE
-                if (list.freeItems) {
-                    for i : index..index+count-1 {
-                        free(list.items[i], list.allocator);
-                    }
-                }
-            DONE;
+    #if #run isPointer(T.TItem) {
+        if (list.freeItems) {
+            for i : index..index + count - 1 {
+                free(list.items[i], list.allocator);
+            }
         }
-
-        return "";
-    }();
+    }
 
     memoryMove(list.items + index, list.items + index + count, list.count - index - count);
     list.count = list.count - count;
@@ -291,32 +265,35 @@ reverse :: (list: *$T/List) {
     }
 }
 
-sort :: (list: *$T/List, compareFn: (T.TItem, T.TItem) -> s64) {
+sort :: inline (list: *$T/List, compareFn: (T.TItem, T.TItem) -> s64) {
+    assert(list.items != null);
     qsort(list.items, 0, list.count - 1, compareFn);
 }
 
-sort :: (list: *$T/List, byFn: (T.TItem) -> $R) {
+sort :: inline (list: *$T/List, byFn: (T.TItem) -> $R) {
+    assert(list.items != null);
     qsort(list.items, 0, list.count - 1, byFn);
 }
 
 ref :: (list: *$T/List, index: s64) -> *T.TItem {
+    assert(list.items != null);
     assert(index >= 0 && index < list.count);
     return *list.items[index];
 }
 
 operator [] :: (list: *$T/List, index: s64) -> T.TItem {
+    assert(list.items != null);
     assert(index >= 0 && index < list.count);
     return list.items[index];
 }
 
 operator [] :: (list: $T/List, index: s64) -> T.TItem {
+    assert(list.items != null);
     assert(index >= 0 && index < list.count);
     return list.items[index];
 }
 
-fromArray :: inline (array: [] $T, options: ListOptions) -> List(T) {
-    options.capacity = max(options.capacity, array.count);
-
+fromArray :: inline (array: [] $T, options: ListOptions(T)) -> List(T) {
     list: List(T);
     init(*list, options);
     addRange(*list, ..array);
@@ -324,6 +301,7 @@ fromArray :: inline (array: [] $T, options: ListOptions) -> List(T) {
 }
 
 toArray :: (list: *$T/List) -> [] T.TItem {
+    assert(list.items != null);
     array := allocArray(T.TItem, list.count, list.allocator);
     memoryCopy(array.data, list.items, list.count);
     return array;
@@ -331,6 +309,8 @@ toArray :: (list: *$T/List) -> [] T.TItem {
 
 for_expansion :: (list: *$T/List, body: Code, flags: For_Flags) #expand {
     #assert(!(flags & .REVERSE));
+
+    assert(list.items != null);
 
     index := 0;
     while (index < list.count) {
@@ -359,4 +339,5 @@ resize :: (list: *$T/List, minSize: s64) {
     }
 
     list.items = realloc(list.items, list.capacity, oldCapacity, list.allocator);
+    assert(list.items != null);
 }

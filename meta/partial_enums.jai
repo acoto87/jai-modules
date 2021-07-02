@@ -104,7 +104,7 @@ generatePartialEnum :: (workspace: Workspace, enumName: string, enumDeclarations
 
         for i : range(1, members.count) {
             if (members[i].value == members[i-1].value) {
-                compilerReport(
+                report(
                     tprint(
                         "Some EntityType members has same value. That was probably unintentional. % == % == %",
                         members[i-1].name,
@@ -128,16 +128,5 @@ generatePartialEnum :: (workspace: Workspace, enumName: string, enumDeclarations
         addBuildString(entityTypeEnum, workspace);
     }
 }
-
-Compiler :: #import "Compiler";
-addBuildString :: Compiler.add_build_string;
-compilerReport :: Compiler.compiler_report;
-Message :: Compiler.Message;
-MessageTypechecked :: Compiler.Message_Typechecked;
-MessagePhase :: Compiler.Message_Phase;
-CodeDeclaration :: Compiler.Code_Declaration;
-CodeEnum :: Compiler.Code_Enum;
-CodeBlock :: Compiler.Code_Block;
-CodeLiteral :: Compiler.Code_Literal;
 
 #import "collections";

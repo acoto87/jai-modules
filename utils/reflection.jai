@@ -28,13 +28,13 @@ isEnumFlags :: inline ($T: Type) -> bool {
     return ti.type == .ENUM && (ti.enum_type_flags & .Is_Flags) == .Is_Flags;
 }
 
-getCount :: inline ($T: Type) -> s64 {
+getEnumCount :: inline ($T: Type) -> s64 {
     ti := type_info(T);
     assert(ti.type == .ENUM);
     return ti.values.count;
 }
 
-getInternalType :: ($T: Type) -> Type {
+getEnumInternalType :: ($T: Type) -> Type {
     ti := type_info(T);
     assert(ti.type == .ENUM);
     if (ti.internal_type == type_info(s8)) return s8;
@@ -61,34 +61,27 @@ isArray :: ($T: Type) -> bool {
     return ti.type == .ARRAY;
 }
 
-default_of :: ($T: Type) -> T {
-    #assert(canDetermineDefault(T));
-    #if #run isInteger(T) return 0;
-    else #if #run isFloat(T) return 0;
-    else #if #run isBool(T) return false;
-    else #if #run isString(T) return "";
-    else #if #run isEnum(T) return cast(T) getEnumDefaultValue(T);
-    else #if #run isStruct(T) return .{};
-    else #if #run isArray(T) return .[];
-    else return null;
+isPointer :: ($T: Type) -> bool {
+    ti := type_info(T);
+    return ti.type == .POINTER;
+}
+
+createInstance :: ($T: Type, allocator: Allocator = null) -> T {
+    item: T;
+    #if #run isPointer(T) {
+        info := type_info(T);
+        runtime_size := info.pointer_to.runtime_size;
+        item = cast(T) _alloc(runtime_size, allocator);
+    }
+    return item;
+}
+
+default_of :: inline ($T: Type) -> T {
+    item: T;
+    return item;
 }
 
 #scope_file
 
-canDetermineDefault :: ($T: Type) -> bool {
-    ti := type_info(T);
-    return ti.type == .INTEGER ||
-           ti.type == .FLOAT ||
-           ti.type == .BOOL ||
-           ti.type == .STRING ||
-           ti.type == .POINTER ||
-           ti.type == .STRUCT ||
-           ti.type == .ARRAY ||
-           ti.type == .ENUM;;
-}
-
-getEnumDefaultValue :: ($T: Type) -> s64 {
-    ti := type_info(T);
-    assert(ti.type == .ENUM);
-    return ifx ti.values.count > 0 then ti.values[0] else 0;
-}
+Basic :: #import "Basic";
+_alloc :: Basic.alloc;

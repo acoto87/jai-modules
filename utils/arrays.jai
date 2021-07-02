@@ -38,9 +38,6 @@ qsort :: inline (array: [] $T, compareFn: (T, T) -> s64) {
 }
 
 qsort :: inline (array: [] $T, left: s64, right: s64, compareFn: (T, T) -> s64) {
-    assert(left >= 0 && left < array.count);
-    assert(right >= 0 && right < array.count);
-
     qsort(array.data, left, right, compareFn);
 }
 
@@ -49,7 +46,6 @@ qsort :: inline (array: *$T, count: s64, compareFn: (T, T) -> s64) {
 }
 
 qsort :: (array: *$T, left: s64, right: s64, compareFn: (T, T) -> s64) {
-    assert(left >= 0 && right >= 0);
     assert(compareFn != null);
 
     if (left >= right) {
@@ -87,9 +83,6 @@ qsort :: inline (array: [] $T, byFn: (T) -> $R) {
 }
 
 qsort :: inline (array: [] $T, left: s64, right: s64, byFn: (T) -> $R) {
-    assert(left >= 0 && left < array.count);
-    assert(right >= 0 && right < array.count);
-
     qsort(array.data, left, right, byFn);
 }
 
@@ -98,7 +91,6 @@ qsort :: inline (array: *$T, count: s64, byFn: (T) -> $R) {
 }
 
 qsort :: (array: *$T, left: s64, right: s64, byFn: (T) -> $R) {
-    assert(left >= 0 && right >= 0);
     assert(byFn != null);
 
     if (left >= right) {
@@ -137,9 +129,6 @@ heapSort :: inline (array: [] $T, compareFn: (T, T) -> s64) {
 }
 
 heapSort :: inline (array: [] $T, left: s64, right: s64, compareFn: (T, T) -> s64) {
-    assert(left >= 0 && left < array.count);
-    assert(right >= 0 && right < array.count);
-
     heapSort(array.data, left, right, compareFn);
 }
 
@@ -148,7 +137,6 @@ heapSort :: inline (array: *$T, count: s64, compareFn: (T, T) -> s64) {
 }
 
 heapSort :: (array: *$T, left: s64, right: s64, compareFn: (T, T) -> s64) {
-    assert(left >= 0 && right >= 0);
     assert(compareFn != null);
 
     if (left >= right) {
@@ -179,9 +167,6 @@ heapSort :: inline (array: [] $T, byFn: (T) -> $R) {
 }
 
 heapSort :: inline (array: [] $T, left: s64, right: s64, byFn: (T) -> $R) {
-    assert(left >= 0 && left < array.count);
-    assert(right >= 0 && right < array.count);
-
     heapSort(array.data, left, right, byFn);
 }
 
@@ -190,7 +175,6 @@ heapSort :: inline (array: *$T, count: s64, byFn: (T) -> $R) {
 }
 
 heapSort :: inline (array: *$T, left: s64, right: s64, byFn: (T) -> $R) {
-    assert(left >= 0 && right >= 0);
     assert(byFn != null);
 
     heapSort(array.data, left, right, (item1: T, item2: T) -> s32 {

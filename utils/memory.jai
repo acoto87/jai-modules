@@ -54,6 +54,9 @@ memoryClear :: inline (value: *$T) {
     memorySet(value, 0);
 }
 
+allocRaw :: _alloc;
+reallocRaw :: _realloc;
+
 alloc :: inline ($T: Type, count: s64 = 1, allocator: Allocator = null, $initialized: bool = true) -> *T {
     assert(count >= 0);
 

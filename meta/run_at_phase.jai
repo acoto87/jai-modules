@@ -78,12 +78,4 @@ runProceduresAtPhase :: (workspace: Workspace, phase: u32) {
     }
 }
 
-Compiler :: #import "Compiler";
-addBuildString :: Compiler.add_build_string;
-Message :: Compiler.Message;
-MessageTypechecked :: Compiler.Message_Typechecked;
-MessagePhase :: Compiler.Message_Phase;
-CodeDeclaration :: Compiler.Code_Declaration;
-CodeProcedureHeader :: Compiler.Code_Procedure_Header;
-
 #import "collections";

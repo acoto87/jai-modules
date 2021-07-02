@@ -39,7 +39,7 @@ isAny :: Basic.is_any;
 
 compare :: inline (a: string, b: string, $$ comparison := StringComparison.Ordinal) -> s64 #must {
     return ifx comparison == StringComparison.OrdinalIgnoreCase
-        then String.compare_no_case(a, b)
+        then String.compare_nocase(a, b)
         else String.compare(a, b);
 }
 
