@@ -7,7 +7,7 @@ Vec2 :: struct {
 VEC2_ZERO   :: Vec2.{};
 VEC2_ONE    :: Vec2.{ x = 1.0, y = 1.0 };
 VEC2_LEFT   :: Vec2.{ x = -1.0, y = 0.0 };
-VEC2_UP     :: Vec2.{ x = 0.0, x = -1.0 };
+VEC2_UP     :: Vec2.{ x = 0.0, y = -1.0 };
 VEC2_RIGHT  :: Vec2.{ x = 1.0, y = 0.0 };
 VEC2_DOWN   :: Vec2.{ x = 0.0, y = 1.0 };
 
@@ -24,8 +24,8 @@ vec2 :: inline (x: s32, y: s32) -> Vec2 {
     return vec2(cast(f32) x, cast(f32) y);
 }
 
-vect2 :: inline (v: Vec2i) -> Vec2 {
-    return vec2i(cast(f32) v.x, cast(f32) v.y);
+vec2 :: inline (v: Vec2i) -> Vec2 {
+    return vec2(cast(f32) v.x, cast(f32) v.y);
 }
 
 equals :: inline (v1: Vec2, v2: Vec2) -> bool {
@@ -74,6 +74,23 @@ normalize :: inline (v: Vec2) -> Vec2 {
 
 dot :: inline (v1: Vec2, v2: Vec2) -> f32 {
     return v1.x * v2.x + v1.y * v2.y;
+}
+
+angleBetween :: inline (v1: Vec2, v2: Vec2) -> f32 {
+    v1n := normalize(v1);
+    v2n := normalize(v2);
+    return acosf(dot(v1n, v2n));
+}
+
+angleClockwise :: inline (v1: Vec2, v2: Vec2) -> f32 {
+    dot1 := dot(v1, v2);
+    det := v1.x * v2.y - v1.y * v2.x;
+    return atan2f(det, dot1);
+}
+
+vec2Random :: inline () -> Vec2 {
+    angle := randomNext(0.0, 2 * PI);
+    return vec2(cosf(angle), sinf(angle));
 }
 
 operator == :: (v1: Vec2, v2: Vec2) -> bool {
