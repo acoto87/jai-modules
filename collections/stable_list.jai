@@ -270,19 +270,22 @@ toArray :: (list: *$T/StableList) -> [] T.TItem {
 for_expansion :: (list: *$T/StableList, body: Code, flags: For_Flags) #expand {
     #assert(!(flags & .REVERSE));
 
-    i := 0;
-    while (i < list.capacity) {
-        if (list.entries[i].next < 0) {
+    index := 0;
+    while (index < list.capacity) {
+        if (list.entries[index].next < 0) {
             #if flags & .POINTER {
-                `it := *list.entries[i].item;
+                `it := *list.entries[index].item;
             } else {
-                `it := list.entries[i].item;
+                `it := list.entries[index].item;
             }
-            `it_index := i;
+            `it_index := index;
+
+            index += 1;
 
             #insert (remove=assert(false)) body;
+        } else {
+            index += 1;
         }
-        i += 1;
     }
 }
 

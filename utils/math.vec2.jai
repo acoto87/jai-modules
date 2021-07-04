@@ -28,6 +28,11 @@ vec2 :: inline (v: Vec2i) -> Vec2 {
     return vec2(cast(f32) v.x, cast(f32) v.y);
 }
 
+vec2Random :: inline () -> Vec2 {
+    angle := randomNext(0.0, 2 * PI);
+    return vec2(cosf(angle), sinf(angle));
+}
+
 equals :: inline (v1: Vec2, v2: Vec2) -> bool {
     d := distance(v1, v2);
     return nearlyEquals(d, 0, EPSILON_FOR_EQUALITY);
@@ -43,6 +48,18 @@ lengthSqr :: inline (v: Vec2) -> f32 {
 
 length :: inline (v: Vec2) -> f32 {
     return sqrtf(lengthSqr(v));
+}
+
+setLength :: inline (v: Vec2, len: f32) -> Vec2 {
+    vNorm := normalize(v);
+    return vNorm * len;
+}
+
+clampLength :: inline (v: Vec2, maxLength: f32) -> Vec2 {
+   len := length(v);
+   if len == 0 then return vec2(0, 0);
+   f := min(len, maxLength) / len;
+   return v * f;
 }
 
 distanceSqr :: inline (v1: Vec2, v2: Vec2) -> f32 {
@@ -69,7 +86,8 @@ distanceManhattan :: inline (v1: Vec2, v2: Vec2) -> s32 {
 
 normalize :: inline (v: Vec2) -> Vec2 {
     len := length(v);
-    return ifx len != 0 then (v / len) else VEC2_ZERO;
+    if len == 0 then return vec2(0, 0);
+    return v / len;
 }
 
 dot :: inline (v1: Vec2, v2: Vec2) -> f32 {
@@ -86,11 +104,6 @@ angleClockwise :: inline (v1: Vec2, v2: Vec2) -> f32 {
     dot1 := dot(v1, v2);
     det := v1.x * v2.y - v1.y * v2.x;
     return atan2f(det, dot1);
-}
-
-vec2Random :: inline () -> Vec2 {
-    angle := randomNext(0.0, 2 * PI);
-    return vec2(cosf(angle), sinf(angle));
 }
 
 operator == :: (v1: Vec2, v2: Vec2) -> bool {

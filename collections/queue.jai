@@ -191,12 +191,13 @@ for_expansion :: (queue: *$T/Queue, body: Code, flags: For_Flags) #expand {
         }
         `it_index := index;
 
-        #insert (remove=assert(false)) body;
         index += 1;
         current += 1;
         if (current >= queue.capacity) {
             current = 0;
         }
+
+        #insert (remove=assert(false)) body;
     }
 }
 

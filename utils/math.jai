@@ -102,6 +102,11 @@ nearlyEquals :: (a: f32, b: f32, epsilon: f32) -> bool {
     return diff / min(absA + absB, F32_MAX) < epsilon;
 }
 
+isNaNInf :: Math.is_nan_is_inf;
+isNaN :: Math.isnan;
+isInf :: Math.isinf;
+isFinite :: Math.is_finite;
+
 #scope_file
 
 Math :: #import "Math";

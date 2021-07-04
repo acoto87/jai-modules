@@ -275,16 +275,16 @@ sort :: inline (list: *$T/List, byFn: (T.TItem) -> $R) {
     qsort(list.items, 0, list.count - 1, byFn);
 }
 
+get :: (list: *$T/List, index: s64) -> T.TItem {
+    assert(list.items != null);
+    assert(index >= 0 && index < list.count);
+    return list.items[index];
+}
+
 ref :: (list: *$T/List, index: s64) -> *T.TItem {
     assert(list.items != null);
     assert(index >= 0 && index < list.count);
     return *list.items[index];
-}
-
-operator [] :: (list: *$T/List, index: s64) -> T.TItem {
-    assert(list.items != null);
-    assert(index >= 0 && index < list.count);
-    return list.items[index];
 }
 
 operator [] :: (list: $T/List, index: s64) -> T.TItem {
@@ -321,8 +321,9 @@ for_expansion :: (list: *$T/List, body: Code, flags: For_Flags) #expand {
         }
         `it_index := index;
 
-        #insert (remove=assert(false)) body;
         index += 1;
+
+        #insert (remove=assert(false)) body;
     }
 }
 

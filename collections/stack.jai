@@ -164,8 +164,9 @@ for_expansion :: (stack: *$T/Stack, body: Code, flags: For_Flags) #expand {
         }
         `it_index := index;
 
-        #insert (remove=assert(false)) body;
         index += 1;
+
+        #insert (remove=assert(false)) body;
     }
 }
 

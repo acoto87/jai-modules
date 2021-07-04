@@ -183,10 +183,10 @@ for_expansion :: (set: *$T/HashSet, body: Code, flags: For_Flags) #expand {
             }
             `it_index := index;
 
-            #insert (remove=assert(false)) body;
-
             current = entry.nextInOrder;
             index += 1;
+
+            #insert (remove=assert(false)) body;
         }
     } else {
         index := 0;
@@ -202,9 +202,9 @@ for_expansion :: (set: *$T/HashSet, body: Code, flags: For_Flags) #expand {
             }
             `it_index := index;
 
-            #insert (remove=assert(false)) body;
-
             index += 1;
+
+            #insert (remove=assert(false)) body;
         }
     }
 }
