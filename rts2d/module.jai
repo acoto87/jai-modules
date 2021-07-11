@@ -7,7 +7,6 @@
 
 #load "constants.jai";
 #load "input.jai";
-#load "color.jai";
 #load "sprites.jai";
 #load "font.jai";
 #load "render.jai";

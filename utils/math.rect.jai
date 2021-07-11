@@ -6,8 +6,13 @@ Rect :: struct {
 RECT_EMPTY :: Rect.{};
 
 getTopLeft :: inline (r: Rect) -> Vec2 { return vec2(r.x, r.y); }
+getTopCenter :: inline (r: Rect) -> Vec2 { return vec2(r.x + r.w * 0.5, r.y); }
 getTopRight :: inline (r: Rect) -> Vec2 { return vec2(r.x + r.w, r.y); }
+getMiddleLeft :: inline (r: Rect) -> Vec2 { return vec2(r.x, r.y + r.h * 0.5); }
+getMiddleCenter :: inline (r: Rect) -> Vec2 { return vec2(r.x + r.w * 0.5, r.y + r.h * 0.5); }
+getMiddleRight :: inline (r: Rect) -> Vec2 { return vec2(r.x + r.w, r.y + r.h * 0.5); }
 getBottomLeft :: inline (r: Rect) -> Vec2 { return vec2(r.x, r.y + r.h); }
+getBottomCenter :: inline (r: Rect) -> Vec2 { return vec2(r.x + r.w * 0.5, r.y + r.h); }
 getBottomRight :: inline (r: Rect) -> Vec2 { return vec2(r.x + r.w, r.y + r.h); }
 getCenter :: inline (r: Rect) -> Vec2 { return vec2(r.x + r.w * 0.5, r.y + r.h * 0.5); }
 getSize :: inline (r: Rect) -> Vec2 { return vec2(r.w, r.h); }
@@ -54,6 +59,14 @@ contains :: inline (r: Rect, x: s32, y: s32) -> bool {
 intersects :: inline (r1: Rect, r2: Rect) -> bool {
     return !(r1.x + r1.w < r2.x || r1.x > r2.x + r2.w ||
              r1.y + r1.h < r2.y || r1.y > r2.y + r2.h);
+}
+
+intersects :: inline (r: Rect, c: Circle) -> bool {
+    xn := max(r.x, min(c.x, r.x + r.w));
+    yn := max(r.y, min(c.y, r.y + r.h));
+    dx := xn - c.x;
+    dy := yn - c.y;
+    return dx * dx + dy * dy <= c.r * c.r;
 }
 
 scale :: inline (r: Rect, s: f32) -> Rect {

@@ -25,10 +25,12 @@ f32 :: float32;
 f64 :: float64;
 
 #load "math.jai";
-#load "math.rect.jai";
-#load "math.recti.jai";
 #load "math.vec2.jai";
 #load "math.vec2i.jai";
+#load "math.rect.jai";
+#load "math.recti.jai";
+#load "math.circle.jai";
+#load "color.jai";
 #load "memory.jai";
 #load "memory_buffer.jai";
 #load "arrays.jai";

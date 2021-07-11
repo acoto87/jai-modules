@@ -63,29 +63,27 @@ stbtt_GetFontOffsetForIndex :: (data: *u8, index: s32) -> s32 #foreign stb_truet
 build :: (dll: bool = true, lib: bool = true) {
     if (dll) {
         print("Building dynamic library:\n");
-        build_cpp_dynamic_lib("win/stb_truetype", "source/stb_truetype.c");
+        buildCppDynamicLib("lib/win64/stb_truetype", "source/stb_truetype.c");
     }
 
     if (lib) {
         print("Building static library:\n");
-        build_cpp_static_lib("win/stb_truetype", "source/stb_truetype.c");
+        buildCppStaticLib("lib/win64/stb_truetype", "source/stb_truetype.c");
     }
 
-    build_cpp_done();
+    buildCppDone();
 }
 
 #scope_file
 
 BuildCpp :: #import "BuildCpp";
-build_cpp_dynamic_lib :: BuildCpp.build_cpp_dynamic_lib;
+buildCppDynamicLib :: BuildCpp.build_cpp_dynamic_lib;
+buildCppStaticLib :: BuildCpp.build_cpp_static_lib;
+buildCppDone :: BuildCpp.build_cpp_done;
 
 Basic :: #import "Basic";
 print :: Basic.print;
 
 #if OS == .WINDOWS {
-	stb_truetype :: #foreign_library "win/stb_truetype";
-} else #if OS == .LINUX {
-	stb_truetype :: #foreign_library "linux/stb_truetype";
-} else #if OS == .MACOS {
-	stb_truetype :: #foreign_library "mac/stb_truetype";
+	stb_truetype :: #foreign_library "lib/win64/stb_truetype";
 }

@@ -84,7 +84,7 @@ realloc :: inline (value: *$T, count: s64 = 1, oldCount: s64 = 1, allocator: All
 }
 
 allocArray :: ($T: Type, length: s64, allocator: Allocator = null, $initialized: bool = true) -> [] T {
-    assert(length > 0);
+    assert(length >= 0);
 
     items := alloc(T, length, allocator, initialized);
 

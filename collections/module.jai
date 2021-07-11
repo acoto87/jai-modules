@@ -26,12 +26,15 @@
 );
 
 #load "list.jai";
-#load "map.jai";
+#load "hash_map.jai";
+#load "sparse_map.jai";
 #load "set.jai";
 #load "stack.jai";
 #load "queue.jai";
 #load "binary_heap.jai";
 #load "stable_list.jai";
+#load "quadtree.jai";
+#load "kdtree.jai";
 
 #if loadTests {
     #load "tests/list_test.jai";
