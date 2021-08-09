@@ -56,6 +56,12 @@ isStruct :: ($T: Type) -> bool {
     return ti.type == .STRUCT;
 }
 
+getStructName :: ($T: Type) -> string {
+    ti := type_info(T);
+    assert(ti.type == .STRUCT);
+    return ti.name;
+}
+
 isArray :: ($T: Type) -> bool {
     ti := type_info(T);
     return ti.type == .ARRAY;
@@ -76,9 +82,33 @@ createInstance :: ($T: Type, allocator: Allocator = null) -> T {
     return item;
 }
 
+getRuntimeSize :: inline ($T: Type) -> s64 {
+    ti := type_info(T);
+    return ti.runtime_size;
+}
+
 default_of :: inline ($T: Type) -> T {
     item: T;
     return item;
+}
+
+align_of :: ($T: Type) -> s64 {
+    d :: struct(T) {
+        c: u8;
+        m: T;
+    }
+    return offset_of(d, "m");
+}
+
+offset_of :: ($T: Type, name: string) -> s64 {
+    ti := type_info(T);
+    assert(ti.type == .STRUCT);
+    for member : ti.members {
+        if (member.name == name) {
+            return member.offset_in_bytes;
+        }
+    }
+    return -1;
 }
 
 #scope_file

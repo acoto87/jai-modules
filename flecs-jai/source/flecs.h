@@ -1624,6 +1624,9 @@ FLECS_API
 void ecs_os_fini(void);
 
 FLECS_API
+ecs_os_api_t* ecs_os_get_api(void);
+
+FLECS_API
 void ecs_os_set_api(
     ecs_os_api_t *os_api);
 

@@ -18688,6 +18688,14 @@ int64_t ecs_os_api_realloc_count = 0;
 int64_t ecs_os_api_calloc_count = 0;
 int64_t ecs_os_api_free_count = 0;
 
+ecs_os_api_t* ecs_os_get_api(void)
+{
+    if (!ecs_os_api_initialized) {
+        return 0;
+    }
+    return &ecs_os_api;
+}
+
 void ecs_os_set_api(
     ecs_os_api_t *os_api)
 {
@@ -24186,8 +24194,8 @@ size_t ecs_to_size_t(
 ecs_size_t ecs_from_size_t(
     size_t size)
 {
-   ecs_assert(size < INT32_MAX, ECS_INTERNAL_ERROR, NULL);
-   return (ecs_size_t)size;
+    ecs_assert(size < INT32_MAX, ECS_INTERNAL_ERROR, NULL);
+    return (ecs_size_t)size;
 }
 
 int32_t ecs_next_pow_of_2(

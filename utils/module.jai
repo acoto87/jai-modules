@@ -107,7 +107,7 @@ formatInt :: Basic.formatInt;
 FormatInt :: Basic.FormatInt;
 formatStruct :: Basic.formatStruct;
 FormatStruct :: Basic.FormatStruct;
-
+getCommandLineArguments :: Basic.get_command_line_arguments;
 exit :: Basic.exit;
 resetTemporaryStorage :: Basic.reset_temporary_storage;
 
