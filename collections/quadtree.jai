@@ -20,7 +20,13 @@ init :: (tree: *QuadTree, boundary: Rect, capacity: s64) {
     tree.entries = alloc(QuadTreeEntry, capacity);
 }
 
-uninit :: (tree: *QuadTree, freeTree: bool) {
+uninit :: (tree: *QuadTree, freeTree: bool = false, freeUserData: bool = false) {
+    if (freeUserData) {
+        for i : 0..tree.count-1 {
+            free(tree.entries[i].userData);
+        }
+    }
+
     free(tree.entries);
     tree.entries = null;
 
