@@ -54,6 +54,7 @@ NVGcommands :: enum s32 {
     NVG_BEZIERTO :: 2;
     NVG_CLOSE    :: 3;
     NVG_WINDING  :: 4;
+    NVG_ADDPATH  :: 5;
 }
 
 NVGcommand :: struct {
@@ -93,7 +94,8 @@ NVGcontext :: struct {
     commands: *NVGcommand;
     ccommands: s32;
     ncommands: s32;
-    commandx, commandy: f32;
+    commandx: f32;
+    commandy: f32;
     states: [NVG_MAX_STATES] NVGstate;
     nstates: s32;
     cache: *NVGpathCache;
@@ -280,8 +282,9 @@ nvgEndFrame :: (ctx: *NVGcontext) {
         fontImage := ctx.fontImages[ctx.fontImageIdx];
 
         // delete images that smaller than current one
-        if (fontImage == 0)
+        if (fontImage == 0) {
             return;
+        }
 
         iw, ih: s32;
         nvgImageSize(ctx, fontImage, *iw, *ih);
@@ -415,7 +418,9 @@ nvgHSL :: (h: f32, s: f32, l: f32) -> NVGcolor {
 // HSL values are all in range [0..1], alpha in range [0..255]
 nvgHSLA :: (h: f32, s: f32, l: f32, a: u8) -> NVGcolor {
     h = fmodf(h, 1.0);
-    if (h < 0.0) h += 1.0;
+    if (h < 0.0) {
+        h += 1.0;
+    }
     s = clamp(s, 0.0, 1.0);
     l = clamp(l, 0.0, 1.0);
 
@@ -440,7 +445,9 @@ nvgHSLA :: (h: f32, s: f32, l: f32, a: u8) -> NVGcolor {
 // Pushes and saves the current render state into a state stack.
 // A matching nvgRestore() must be used to restore the state.
 nvgSave :: (ctx: *NVGcontext) {
-    if (ctx.nstates >= NVG_MAX_STATES) return;
+    if (ctx.nstates >= NVG_MAX_STATES) {
+        return;
+    }
     if (ctx.nstates > 0) {
         ctx.states[ctx.nstates] = ctx.states[ctx.nstates - 1];
     }
@@ -449,7 +456,9 @@ nvgSave :: (ctx: *NVGcontext) {
 
 // Pops and restores current render state.
 nvgRestore :: (ctx: *NVGcontext) {
-    if (ctx.nstates <= 1) return;
+    if (ctx.nstates <= 1) {
+        return;
+    }
     ctx.nstates -= 1;
 }
 
@@ -1007,7 +1016,19 @@ nvgBeginPath :: (ctx: *NVGcontext) {
     nvg__clearPathCache(ctx);
 }
 
-// Starts new sub-path with specified point as first point.
+nvgBeginPathBatch :: (ctx: *NVGcontext) {
+    ctx.ncommands = 0;
+    nvg__clearPathCache(ctx);
+}
+
+// Add a new sub-path.
+nvgAddPath :: (ctx: *NVGcontext) {
+    nvg__appendCommands(ctx,
+        nvg__command(.NVG_ADDPATH)
+    );
+}
+
+// Move to the specified point. This will start a new sub-path if it's not in batch.
 nvgMoveTo :: (ctx: *NVGcontext, x: f32, y: f32) {
     nvg__appendCommands(ctx,
         nvg__command(.NVG_MOVETO, x, y)
@@ -1058,7 +1079,8 @@ nvgArcTo :: (ctx: *NVGcontext, x1: f32, y1: f32, x2: f32, y2: f32, radius: f32) 
     if (nvg__ptEquals(x0, y0, x1, y1, ctx.distTol) ||
         nvg__ptEquals(x1,y1, x2,y2, ctx.distTol) ||
         nvg__distPtSeg(x1,y1, x0,y0, x2,y2) < ctx.distTol * ctx.distTol ||
-        radius < ctx.distTol) {
+        radius < ctx.distTol)
+    {
         nvgLineTo(ctx, x1,y1);
         return;
     }
@@ -1250,10 +1272,11 @@ nvgFill :: (ctx: *NVGcontext) {
 
     nvg__flattenPaths(ctx);
 
-    if (ctx.params.edgeAntiAlias && state.shapeAntiAlias)
+    if (ctx.params.edgeAntiAlias && state.shapeAntiAlias) {
         nvg__expandFill(ctx, ctx.fringeWidth, .NVG_MITER, 2.4);
-    else
+    } else {
         nvg__expandFill(ctx, 0.0, .NVG_MITER, 2.4);
+    }
 
     // Apply global alpha
     fillPaint := state.fill;
@@ -1270,6 +1293,34 @@ nvgFill :: (ctx: *NVGcontext) {
         ctx.fillTriCount += path.nstroke - 2;
         ctx.drawCallCount += 2;
     }
+}
+
+nvgFillBatch :: (ctx: *NVGcontext) {
+    state := nvg__getState(ctx);
+
+    nvg__flattenPaths(ctx);
+
+    if (ctx.params.edgeAntiAlias && state.shapeAntiAlias) {
+        nvg__expandFill(ctx, ctx.fringeWidth, .NVG_MITER, 2.4);
+    } else {
+        nvg__expandFill(ctx, 0.0, .NVG_MITER, 2.4);
+    }
+
+    // Apply global alpha
+    fillPaint := state.fill;
+    fillPaint.innerColor.a *= state.alpha;
+    fillPaint.outerColor.a *= state.alpha;
+
+    ctx.params.renderFillBatch(ctx.params.userPtr, *fillPaint, state.compositeOperation, *state.scissor, ctx.fringeWidth,
+                               ctx.cache.bounds, ctx.cache.paths, ctx.cache.npaths);
+
+    // Count triangles
+    for i : 0..ctx.cache.npaths-1 {
+        path := *ctx.cache.paths[i];
+        ctx.fillTriCount += path.nfill / 3;
+        ctx.fillTriCount += path.nstroke / 3;
+    }
+    ctx.drawCallCount += 1;
 }
 
 // Fills the current path with current stroke style.
@@ -1295,10 +1346,11 @@ nvgStroke :: (ctx: *NVGcontext) {
 
     nvg__flattenPaths(ctx);
 
-    if (ctx.params.edgeAntiAlias && state.shapeAntiAlias)
+    if (ctx.params.edgeAntiAlias && state.shapeAntiAlias) {
         nvg__expandStroke(ctx, strokeWidth * 0.5, ctx.fringeWidth, state.lineCap, state.lineJoin, state.miterLimit);
-    else
+    } else {
         nvg__expandStroke(ctx, strokeWidth * 0.5, 0.0, state.lineCap, state.lineJoin, state.miterLimit);
+    }
 
     ctx.params.renderStroke(ctx.params.userPtr, *strokePaint, state.compositeOperation, *state.scissor, ctx.fringeWidth,
                             strokeWidth, ctx.cache.paths, ctx.cache.npaths);
@@ -1366,13 +1418,17 @@ nvgCreateFontMemAtIndex :: (ctx: *NVGcontext, name: *u8, data: *u8, ndata: s32, 
 
 // Finds a loaded font of specified name, and returns handle to it, or -1 if the font is not found.
 nvgFindFont :: (ctx: *NVGcontext, name: *u8) -> s32 {
-    if (name == null) return -1;
+    if (name == null) {
+        return -1;
+    }
     return fonsGetFontByName(ctx.fs, name);
 }
 
 // Adds a fallback font by handle.
 nvgAddFallbackFontId :: (ctx: *NVGcontext, baseFont: s32, fallbackFont: s32) -> bool {
-    if (baseFont == -1 || fallbackFont == -1) return false;
+    if (baseFont == -1 || fallbackFont == -1) {
+        return false;
+    }
     return fonsAddFallbackFont(ctx.fs, baseFont, fallbackFont);
 }
 
@@ -1426,7 +1482,9 @@ nvgFontFace :: (ctx: *NVGcontext, font: *u8) {
 // Draws text string at specified location. If end is specified only the sub-string up to the end is drawn.
 nvgText :: (ctx: *NVGcontext, x: f32, y: f32, str: *u8, end: *u8) -> f32 {
     state := nvg__getState(ctx);
-    if (state.fontId == FONS_INVALID) return x;
+    if (state.fontId == FONS_INVALID) {
+        return x;
+    }
 
     if (end == null) {
         end = str + strlen(str);
@@ -1434,7 +1492,9 @@ nvgText :: (ctx: *NVGcontext, x: f32, y: f32, str: *u8, end: *u8) -> f32 {
 
     cverts := max(2, cast(s32)(end - str)) * 6; // conservative estimate.
     verts := nvg__allocTempVerts(ctx, cverts);
-    if (verts == null) return x;
+    if (verts == null) {
+        return x;
+    }
 
     scale := nvg__getFontScale(state) * ctx.devicePxRatio;
     invscale := 1.0 / scale;
@@ -1522,7 +1582,9 @@ nvgText :: (ctx: *NVGcontext, x: f32, y: f32, str: *u8, end: *u8) -> f32 {
 // Words longer than the max width are slit at nearest character (i.e. no hyphenation).
 nvgTextBox :: (ctx: *NVGcontext, x: f32, y: f32, breakRowWidth: f32, str: *u8, end: *u8) {
     state := nvg__getState(ctx);
-    if (state.fontId == FONS_INVALID) return;
+    if (state.fontId == FONS_INVALID) {
+        return;
+    }
 
     oldAlign := state.textAlign;
     haling := state.textAlign & (NVGalign.NVG_ALIGN_LEFT | .NVG_ALIGN_CENTER | .NVG_ALIGN_RIGHT);
@@ -1538,12 +1600,13 @@ nvgTextBox :: (ctx: *NVGcontext, x: f32, y: f32, breakRowWidth: f32, str: *u8, e
     while (nrows > 0) {
         for i : 0..nrows-1 {
             row := *rows[i];
-            if (haling & .NVG_ALIGN_LEFT)
+            if (haling & .NVG_ALIGN_LEFT) {
                 nvgText(ctx, x, y, row.start, row.end);
-            else if (haling & .NVG_ALIGN_CENTER)
+            } else if (haling & .NVG_ALIGN_CENTER) {
                 nvgText(ctx, x + breakRowWidth * 0.5 - row.width * 0.5, y, row.start, row.end);
-            else if (haling & .NVG_ALIGN_RIGHT)
+            } else if (haling & .NVG_ALIGN_RIGHT) {
                 nvgText(ctx, x + breakRowWidth - row.width, y, row.start, row.end);
+            }
             y += lineh * state.lineHeight;
         }
         str = rows[nrows - 1].next;
@@ -1559,7 +1622,9 @@ nvgTextBox :: (ctx: *NVGcontext, x: f32, y: f32, breakRowWidth: f32, str: *u8, e
 // Measured values are returned in local coordinate space.
 nvgTextBounds :: (ctx: *NVGcontext, x: f32, y: f32, str: *u8, end: *u8, bounds: *f32) -> f32 {
     state := nvg__getState(ctx);
-    if (state.fontId == FONS_INVALID) return 0;
+    if (state.fontId == FONS_INVALID) {
+        return 0;
+    }
 
     scale := nvg__getFontScale(state) * ctx.devicePxRatio;
     invscale := 1.0 / scale;
@@ -1635,11 +1700,9 @@ nvgTextBoxBounds :: (ctx: *NVGcontext, x: f32, y: f32, breakRowWidth: f32, str: 
             // Horizontal bounds
             if (haling & .NVG_ALIGN_LEFT) {
                 dx = 0;
-            }
-            else if (haling & .NVG_ALIGN_CENTER) {
+            } else if (haling & .NVG_ALIGN_CENTER) {
                 dx = breakRowWidth * 0.5 - row.width * 0.5;
-            }
-            else if (haling & .NVG_ALIGN_RIGHT) {
+            } else if (haling & .NVG_ALIGN_RIGHT) {
                 dx = breakRowWidth - row.width;
             }
 
@@ -1672,7 +1735,9 @@ nvgTextBoxBounds :: (ctx: *NVGcontext, x: f32, y: f32, breakRowWidth: f32, str: 
 // Measured values are returned in local coordinate space.
 nvgTextGlyphPositions :: (ctx: *NVGcontext, x: f32, y: f32, str: *u8, end: *u8, positions: *NVGglyphPosition, maxPositions: s32) -> s32 {
     state := nvg__getState(ctx);
-    if (state.fontId == FONS_INVALID) return 0;
+    if (state.fontId == FONS_INVALID) {
+        return 0;
+    }
 
     scale := nvg__getFontScale(state) * ctx.devicePxRatio;
     invscale := 1.0 / scale;
@@ -1681,7 +1746,9 @@ nvgTextGlyphPositions :: (ctx: *NVGcontext, x: f32, y: f32, str: *u8, end: *u8, 
         end = str + strlen(str);
     }
 
-    if (str == end) return 0;
+    if (str == end) {
+        return 0;
+    }
 
     fonsSetSize(ctx.fs, state.fontSize * scale);
     fonsSetSpacing(ctx.fs, state.letterSpacing * scale);
@@ -1719,7 +1786,9 @@ nvgTextGlyphPositions :: (ctx: *NVGcontext, x: f32, y: f32, str: *u8, end: *u8, 
 // Measured values are returned in local coordinate space.
 nvgTextMetrics :: (ctx: *NVGcontext, ascender: *f32, descender: *f32, lineh: *f32) {
     state := nvg__getState(ctx);
-    if (state.fontId == FONS_INVALID) return;
+    if (state.fontId == FONS_INVALID) {
+        return;
+    }
 
     scale := nvg__getFontScale(state) * ctx.devicePxRatio;
     invscale := 1.0 / scale;
@@ -1747,15 +1816,21 @@ nvgTextMetrics :: (ctx: *NVGcontext, ascender: *f32, descender: *f32, lineh: *f3
 // Words longer than the max width are slit at nearest character (i.e. no hyphenation).
 nvgTextBreakLines :: (ctx: *NVGcontext, str: *u8, end: *u8, breakRowWidth: f32, rows: [] NVGtextRow, maxRows: s32) -> s32 {
     state := nvg__getState(ctx);
-    if (state.fontId == FONS_INVALID) return 0;
+    if (state.fontId == FONS_INVALID) {
+        return 0;
+    }
 
-    if (maxRows == 0) return 0;
+    if (maxRows == 0) {
+        return 0;
+    }
 
     if (end == null) {
         end = str + strlen(str);
     }
 
-    if (str == end) return 0;
+    if (str == end) {
+        return 0;
+    }
 
     scale := nvg__getFontScale(state) * ctx.devicePxRatio;
     invscale := 1.0 / scale;
@@ -1998,6 +2073,7 @@ NVGparams :: struct {
     renderCancel: (uptr: *void);
     renderFlush: (uptr: *void);
     renderFill: (uptr: *void, paint: *NVGpaint, compositeOperation: NVGcompositeOperationState, scissor: *NVGscissor, fringe: f32, bounds: [] f32, paths: *NVGpath, npaths: s32);
+    renderFillBatch: (uptr: *void, paint: *NVGpaint, compositeOperation: NVGcompositeOperationState, scissor: *NVGscissor, fringe: f32, bounds: [] f32, paths: *NVGpath, npaths: s32);
     renderStroke: (uptr: *void, paint: *NVGpaint, compositeOperation: NVGcompositeOperationState, scissor: *NVGscissor, fringe: f32, strokeWidth: f32, paths: *NVGpath, npaths: s32);
     renderTriangles: (uptr: *void, paint: *NVGpaint, compositeOperation: NVGcompositeOperationState, scissor: *NVGscissor, verts: *NVGvertex, nverts: s32);
     renderDelete: (uptr: *void);
@@ -2069,11 +2145,16 @@ nvgCreateInternal :: (params: *NVGparams) -> *NVGcontext {
 }
 
 nvgDeleteInternal :: (ctx: *NVGcontext) {
-    if (ctx == null) return;
-    if (ctx.commands != null) free(ctx.commands);
-    if (ctx.cache != null) nvg__deletePathCache(ctx.cache);
-
-    if (ctx.fs) {
+    if (ctx == null) {
+        return;
+    }
+    if (ctx.commands != null) {
+        free(ctx.commands);
+    }
+    if (ctx.cache != null) {
+        nvg__deletePathCache(ctx.cache);
+    }
+    if (ctx.fs != null) {
         fonsDeleteInternal(ctx.fs);
     }
 
@@ -2174,11 +2255,21 @@ nvg__getState :: (ctx: *NVGcontext) -> *NVGstate {
 }
 
 nvg__hue :: (h: f32, m1: f32, m2: f32) -> f32 {
-    if (h < 0) h += 1;
-    if (h > 1) h -= 1;
-    if (h < 1.0 / 6.0) return m1 + (m2 - m1) * h * 6.0;
-    if (h < 3.0 / 6.0) return m2;
-    if (h < 4.0 / 6.0) return m1 + (m2 - m1) * (2.0 / 3.0 - h) * 6.0;
+    if (h < 0) {
+        h += 1;
+    }
+    if (h > 1) {
+        h -= 1;
+    }
+    if (h < 1.0 / 6.0) {
+        return m1 + (m2 - m1) * h * 6.0;
+    }
+    if (h < 3.0 / 6.0) {
+        return m2;
+    }
+    if (h < 4.0 / 6.0) {
+        return m1 + (m2 - m1) * (2.0 / 3.0 - h) * 6.0;
+    }
     return m1;
 }
 
@@ -2219,9 +2310,14 @@ nvg__distPtSeg :: (x: f32, y: f32, px: f32, py: f32, qx: f32, qy: f32) -> f32 {
     dy := y - py;
     d := pqx * pqx + pqy * pqy;
     t := pqx * dx + pqy * dy;
-    if (d > 0) t /= d;
-    if (t < 0) t = 0;
-    else if (t > 1) t = 1;
+    if (d > 0) {
+        t /= d;
+    }
+    if (t < 0) {
+        t = 0;
+    } else if (t > 1) {
+        t = 1;
+    }
     dx = px + t * pqx - x;
     dy = py + t * pqy - y;
     return dx * dx + dy * dy;
@@ -2233,17 +2329,24 @@ nvg__appendCommands :: (ctx: *NVGcontext, cmds: ..NVGcommand) {
     if (ctx.ncommands + cmds.count > ctx.ccommands) {
         ccommands := ctx.ncommands + cast(s32) cmds.count + ctx.ccommands / 2;
         commands := realloc(ctx.commands, ccommands);
-        if (commands == null) return;
+        if (commands == null) {
+            return;
+        }
         ctx.commands = commands;
         ctx.ccommands = ccommands;
     }
 
     firstCmd := cmds[0];
-    lastCmd := cmds[cmds.count - 1];
-    if (firstCmd.type != .NVG_CLOSE && firstCmd.type != .NVG_WINDING) {
-        argCount := nvg__argCount(firstCmd.type);
-        ctx.commandx = lastCmd.args[argCount - 2];
-        ctx.commandy = lastCmd.args[argCount - 1];
+    if (firstCmd.type != .NVG_ADDPATH &&
+        firstCmd.type != .NVG_CLOSE &&
+        firstCmd.type != .NVG_WINDING)
+    {
+        lastCmd := cmds[cmds.count - 1];
+        argCount := nvg__argCount(lastCmd.type);
+        if (argCount > 1) {
+            ctx.commandx = lastCmd.args[argCount - 2];
+            ctx.commandy = lastCmd.args[argCount - 1];
+        }
     }
 
     // transform commands
@@ -2270,7 +2373,9 @@ nvg__clearPathCache :: (ctx: *NVGcontext) {
 }
 
 nvg__lastPath :: (ctx: *NVGcontext) -> *NVGpath {
-    if (ctx.cache.npaths == 0) return null;
+    if (ctx.cache.npaths == 0) {
+        return null;
+    }
     return *ctx.cache.paths[ctx.cache.npaths - 1];
 }
 
@@ -2278,7 +2383,9 @@ nvg__addPath :: (ctx: *NVGcontext) {
     if (ctx.cache.npaths + 1 > ctx.cache.cpaths) {
         cpaths := ctx.cache.npaths + 1 + ctx.cache.cpaths / 2;
         paths := realloc(ctx.cache.paths, cpaths);
-        if (paths == null) return;
+        if (paths == null) {
+            return;
+        }
         ctx.cache.paths = paths;
         ctx.cache.cpaths = cpaths;
     }
@@ -2292,13 +2399,17 @@ nvg__addPath :: (ctx: *NVGcontext) {
 }
 
 nvg__lastPoint :: (ctx: *NVGcontext) -> *NVGpoint {
-    if (ctx.cache.npoints == 0) return null;
+    if (ctx.cache.npoints == 0) {
+        return null;
+    }
     return *ctx.cache.points[ctx.cache.npoints - 1];
 }
 
 nvg__addPoint :: (ctx: *NVGcontext, x: f32, y: f32, flags: NVGpointFlags) {
     path := nvg__lastPath(ctx);
-    if (path == null) return;
+    if (path == null) {
+        return;
+    }
 
     if (path != null && ctx.cache.npoints > 0) {
         pt := nvg__lastPoint(ctx);
@@ -2311,7 +2422,9 @@ nvg__addPoint :: (ctx: *NVGcontext, x: f32, y: f32, flags: NVGpointFlags) {
     if (ctx.cache.npoints + 1 > ctx.cache.cpoints) {
         cpoints := ctx.cache.npoints + 1 + ctx.cache.cpoints / 2;
         points := realloc(ctx.cache.points, cpoints);
-        if (points == null) return;
+        if (points == null) {
+            return;
+        }
         ctx.cache.points = points;
         ctx.cache.cpoints = cpoints;
     }
@@ -2328,13 +2441,17 @@ nvg__addPoint :: (ctx: *NVGcontext, x: f32, y: f32, flags: NVGpointFlags) {
 
 nvg__closePath :: (ctx: *NVGcontext) {
     path := nvg__lastPath(ctx);
-    if (path == null) return;
+    if (path == null) {
+        return;
+    }
     path.closed = true;
 }
 
 nvg__pathWinding :: (ctx: *NVGcontext, winding: NVGwinding) {
     path := nvg__lastPath(ctx);
-    if (path == null) return;
+    if (path == null) {
+        return;
+    }
     path.winding = winding;
 }
 
@@ -2388,7 +2505,9 @@ nvg__tesselateBezier :: (
     x3: f32, y3: f32, x4: f32, y4: f32,
     level: s32, type: NVGpointFlags)
 {
-    if (level > 10) return;
+    if (level > 10) {
+        return;
+    }
 
     x12 := (x1 + x2) * 0.5;
     y12 := (y1 + y2) * 0.5;
@@ -2420,14 +2539,17 @@ nvg__tesselateBezier :: (
 
 nvg__flattenPaths :: (ctx: *NVGcontext) {
     cache := ctx.cache;
-    if (cache.npaths > 0)
+    if (cache.npaths > 0) {
         return;
+    }
 
     // Flatten
     for i : 0..ctx.ncommands-1 {
         cmd := ctx.commands[i];
 
         if cmd.type == {
+            case .NVG_ADDPATH;
+                nvg__addPath(ctx);
             case .NVG_MOVETO;
                 nvg__addPath(ctx);
                 nvg__addPoint(ctx, cmd.args[0], cmd.args[1], .NVG_PT_CORNER);
@@ -2436,7 +2558,7 @@ nvg__flattenPaths :: (ctx: *NVGcontext) {
             case .NVG_BEZIERTO;
                 last := nvg__lastPoint(ctx);
                 if (last != null) {
-                    nvg__tesselateBezier(ctx, last.x,last.y, cmd.args[0], cmd.args[1], cmd.args[2], cmd.args[3], cmd.args[4], cmd.args[5], 0, .NVG_PT_CORNER);
+                    nvg__tesselateBezier(ctx, last.x, last.y, cmd.args[0], cmd.args[1], cmd.args[2], cmd.args[3], cmd.args[4], cmd.args[5], 0, .NVG_PT_CORNER);
                 }
             case .NVG_CLOSE;
                 nvg__closePath(ctx);
@@ -2786,7 +2908,9 @@ nvg__calculateJoins :: (ctx: *NVGcontext, w: f32, lineJoin: NVGlineCap, miterLim
     cache := ctx.cache;
     iw: f32 = 0.0;
 
-    if (w > 0.0) iw = 1.0 / w;
+    if (w > 0.0) {
+        iw = 1.0 / w;
+    }
 
     // Calculate which joins needs extra vertices to append, and gather vertex count.
     for i : 0..cache.npaths-1 {
@@ -2875,10 +2999,11 @@ nvg__expandStroke :: (ctx: *NVGcontext, w: f32, fringe: f32, lineCap: NVGlineCap
     cverts: s32 = 0;
     for i : 0..cache.npaths-1 {
         path := *cache.paths[i];
-        if (lineJoin == .NVG_ROUND)
+        if (lineJoin == .NVG_ROUND) {
             cverts += (path.count + path.nbevel * (ncap + 2) + 1) * 2; // plus one for loop
-        else
+        } else {
             cverts += (path.count + path.nbevel * 5 + 1) * 2; // plus one for loop
+        }
 
         if (!path.closed) {
             // space for caps
@@ -2891,7 +3016,9 @@ nvg__expandStroke :: (ctx: *NVGcontext, w: f32, fringe: f32, lineCap: NVGlineCap
     }
 
     verts := nvg__allocTempVerts(ctx, cverts);
-    if (verts == null) return;
+    if (verts == null) {
+        return;
+    }
 
     dst: *NVGvertex;
 
@@ -2930,12 +3057,13 @@ nvg__expandStroke :: (ctx: *NVGcontext, w: f32, fringe: f32, lineCap: NVGlineCap
             dx := p1.x - p0.x;
             dy := p1.y - p0.y;
             nvg__normalize(*dx, *dy);
-            if (lineCap == .NVG_BUTT)
+            if (lineCap == .NVG_BUTT) {
                 dst = nvg__buttCapStart(dst, p0, dx, dy, w, -fringe * 0.5, fringe, u0, u1);
-            else if (lineCap == .NVG_BUTT || lineCap == .NVG_SQUARE)
+            } else if (lineCap == .NVG_BUTT || lineCap == .NVG_SQUARE) {
                 dst = nvg__buttCapStart(dst, p0, dx, dy, w, w - fringe, fringe, u0, u1);
-            else if (lineCap == .NVG_ROUND)
+            } else if (lineCap == .NVG_ROUND) {
                 dst = nvg__roundCapStart(dst, p0, dx, dy, w, ncap, fringe, u0, u1);
+            }
         }
 
         for j : s..e-1 {
@@ -2966,12 +3094,13 @@ nvg__expandStroke :: (ctx: *NVGcontext, w: f32, fringe: f32, lineCap: NVGlineCap
             dx := p1.x - p0.x;
             dy := p1.y - p0.y;
             nvg__normalize(*dx, *dy);
-            if (lineCap == .NVG_BUTT)
+            if (lineCap == .NVG_BUTT) {
                 dst = nvg__buttCapEnd(dst, p1, dx, dy, w, -fringe * 0.5, fringe, u0, u1);
-            else if (lineCap == .NVG_BUTT || lineCap == .NVG_SQUARE)
+            } else if (lineCap == .NVG_BUTT || lineCap == .NVG_SQUARE) {
                 dst = nvg__buttCapEnd(dst, p1, dx, dy, w, w - fringe, fringe, u0, u1);
-            else if (lineCap == .NVG_ROUND)
+            } else if (lineCap == .NVG_ROUND) {
                 dst = nvg__roundCapEnd(dst, p1, dx, dy, w, ncap, fringe, u0, u1);
+            }
         }
 
         path.nstroke = cast(s32) (dst - verts);
@@ -2988,17 +3117,19 @@ nvg__expandFill :: (ctx: *NVGcontext, w: f32, lineJoin: NVGlineCap, miterLimit: 
     nvg__calculateJoins(ctx, w, lineJoin, miterLimit);
 
     // Calculate max vertex usage.
-    cverts: s32 = 0;
+    nverts: s32 = 0;
     for i : 0..cache.npaths-1 {
         path := *cache.paths[i];
-        cverts += path.count + path.nbevel + 1;
+        nverts += path.count + path.nbevel + 1;
         if (fringe) {
-            cverts += (path.count + path.nbevel * 5 + 1) * 2; // plus one for loop
+            nverts += (path.count + path.nbevel * 5 + 1) * 2; // plus one for loop
         }
     }
 
-    verts := nvg__allocTempVerts(ctx, cverts);
-    if (verts == null) return;
+    verts := nvg__allocTempVerts(ctx, nverts);
+    if (verts == null) {
+        return;
+    }
 
     dst: *NVGvertex;
 
@@ -3047,9 +3178,10 @@ nvg__expandFill :: (ctx: *NVGcontext, w: f32, lineJoin: NVGlineCap, miterLimit: 
                 p1 += 1;
             }
         } else {
-            for j : 0..path.count-1 {
-                nvg__vset(dst, pts[j].x, pts[j].y, 0.5, 1);
-                dst += 1;
+            if (path.convex) {
+                dst = nvg__triangulate_convex(dst, pts, path.count);
+            } else {
+                nvg__triangulate(dst, pts, path.count);
             }
         }
 
@@ -3105,6 +3237,21 @@ nvg__expandFill :: (ctx: *NVGcontext, w: f32, lineJoin: NVGlineCap, miterLimit: 
     }
 }
 
+nvg__triangulate_convex :: (verts: *NVGvertex, pts: *NVGpoint, npts: s32) -> *NVGvertex {
+    for j : 2..npts-1 {
+        nvg__vset(verts, pts[0].x, pts[0].y, 0.5, 1);
+        verts += 1;
+        nvg__vset(verts, pts[j-1].x, pts[j-1].y, 0.5, 1);
+        verts += 1;
+        nvg__vset(verts, pts[j].x, pts[j].y, 0.5, 1);
+        verts += 1;
+    }
+    return verts;
+}
+
+nvg__triangulate :: (verts: *NVGvertex, pts: *NVGpoint, npts: s32) {
+}
+
 nvg__command :: inline (cmd: NVGcommands, args: ..f32) -> NVGcommand {
     result: NVGcommand;
     result.type = cmd;
@@ -3116,6 +3263,7 @@ nvg__command :: inline (cmd: NVGcommands, args: ..f32) -> NVGcommand {
 
 nvg__argCount :: inline (cmd: NVGcommands) -> s32 {
     if cmd == {
+        case .NVG_ADDPATH; return 0;
         case .NVG_MOVETO; return 2;
         case .NVG_LINETO; return 2;
         case .NVG_BEZIERTO; return 6;
@@ -3129,8 +3277,11 @@ nvg__allocTempVerts :: (ctx: *NVGcontext, nverts: s32) -> *NVGvertex {
     if (nverts > ctx.cache.cverts) {
         cverts := (nverts + 0xff); // & ~0xff; // Round up to prevent allocations when things change just slightly.
         verts := realloc(ctx.cache.verts, cverts);
-        if (verts == null) return null;
+        if (verts == null) {
+            return null;
+        }
         ctx.cache.verts = verts;
+        ctx.cache.nverts = nverts;
         ctx.cache.cverts = cverts;
     }
 
@@ -3138,10 +3289,18 @@ nvg__allocTempVerts :: (ctx: *NVGcontext, nverts: s32) -> *NVGvertex {
 }
 
 nvg__deletePathCache :: (c: *NVGpathCache) {
-    if (c == null) return;
-    if (c.points != null) free(c.points);
-    if (c.paths != null) free(c.paths);
-    if (c.verts != null) free(c.verts);
+    if (c == null) {
+        return;
+    }
+    if (c.points != null) {
+        free(c.points);
+    }
+    if (c.paths != null) {
+        free(c.paths);
+    }
+    if (c.verts != null) {
+        free(c.verts);
+    }
     free(c);
 }
 
