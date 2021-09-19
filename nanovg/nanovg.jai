@@ -1471,10 +1471,10 @@ nvgText :: (ctx: *NVGcontext, x: f32, y: f32, str: *u8, end: *u8) -> f32 {
     }
 
     cverts := max(2, cast(s32)(end - str)) * 6; // conservative estimate.
-    verts := nvg__allocTempVerts(ctx, cverts);
-    if (verts == null) {
-        return x;
-    }
+
+    verts := *ctx.cache.verts;
+    ensureCapacity(verts, cverts);
+    clear(verts);
 
     scale := nvg__getFontScale(state) * ctx.devicePxRatio;
     invscale := 1.0 / scale;
@@ -1486,7 +1486,6 @@ nvgText :: (ctx: *NVGcontext, x: f32, y: f32, str: *u8, end: *u8) -> f32 {
     fonsSetFont(ctx.fs, state.fontId);
 
     q: FONSquad;
-    nverts: s32 = 0;
 
     isFlipped := nvg__isTransformFlipped(state.xform);
 
@@ -1496,9 +1495,9 @@ nvgText :: (ctx: *NVGcontext, x: f32, y: f32, str: *u8, end: *u8) -> f32 {
 
     while (fonsTextIterNext(ctx.fs, *iter, *q)) {
         if (iter.prevGlyphIndex == -1) { // can not retrieve glyph?
-            if (nverts != 0) {
-                nvg__renderText(ctx, verts, nverts);
-                nverts = 0;
+            if (verts.count != 0) {
+                nvg__renderText(ctx, verts.items, cast(s32) verts.count);
+                clear(verts);
             }
             if (!nvg__allocTextAtlas(ctx)) {
                 break; // no memory :(
@@ -1533,26 +1532,20 @@ nvgText :: (ctx: *NVGcontext, x: f32, y: f32, str: *u8, end: *u8) -> f32 {
         c[6], c[7] = nvgTransformPoint(state.xform, q.x0 * invscale, q.y1 * invscale);
 
         // Create triangles
-        if (nverts + 6 <= cverts) {
-            nvg__vset(*verts[nverts], c[0], c[1], q.s0, q.t0);
-            nverts += 1;
-            nvg__vset(*verts[nverts], c[4], c[5], q.s1, q.t1);
-            nverts += 1;
-            nvg__vset(*verts[nverts], c[2], c[3], q.s1, q.t0);
-            nverts += 1;
-            nvg__vset(*verts[nverts], c[0], c[1], q.s0, q.t0);
-            nverts += 1;
-            nvg__vset(*verts[nverts], c[6], c[7], q.s0, q.t1);
-            nverts += 1;
-            nvg__vset(*verts[nverts], c[4], c[5], q.s1, q.t1);
-            nverts += 1;
+        if (verts.count + 6 <= cverts) {
+            add(verts, nvg__vtx(c[0], c[1], q.s0, q.t0));
+            add(verts, nvg__vtx(c[4], c[5], q.s1, q.t1));
+            add(verts, nvg__vtx(c[2], c[3], q.s1, q.t0));
+            add(verts, nvg__vtx(c[0], c[1], q.s0, q.t0));
+            add(verts, nvg__vtx(c[6], c[7], q.s0, q.t1));
+            add(verts, nvg__vtx(c[4], c[5], q.s1, q.t1));
         }
     }
 
     // TODO: add back-end bit to do this just once per frame.
     nvg__flushTextTexture(ctx);
 
-    nvg__renderText(ctx, verts, nverts);
+    nvg__renderText(ctx, verts.items, cast(s32) verts.count);
 
     return iter.nextx / scale;
 }
@@ -2161,10 +2154,6 @@ nvgGetState :: inline (ctx: *NVGcontext) -> *NVGstate {
     return nvg__getState(ctx);
 }
 
-nvgVset :: inline (vtx: *NVGvertex, x: f32, y: f32, u: f32, v: f32) {
-    nvg__vset(vtx, x, y, u, v);
-}
-
 #scope_file
 
 #import "utils";
@@ -2435,13 +2424,6 @@ nvg__polyReverse :: (pts: *NVGpoint, npts: s32) {
         i += 1;
         j -= 1;
     }
-}
-
-nvg__vset :: (vtx: *NVGvertex, x: f32, y: f32, u: f32, v: f32) {
-    vtx.x = x;
-    vtx.y = y;
-    vtx.u = u;
-    vtx.v = v;
 }
 
 nvg__vtx :: (x: f32, y: f32, u: f32, v: f32) -> NVGvertex {
@@ -3133,11 +3115,6 @@ nvg__argCount :: inline (cmd: NVGcommands) -> s32 {
         case .NVG_WINDING; return 1;
         case; return -1;
     }
-}
-
-nvg__allocTempVerts :: (ctx: *NVGcontext, nverts: s32) -> *NVGvertex {
-    ensureCapacity(*ctx.cache.verts, nverts + 0xff);
-    return ctx.cache.verts.items;
 }
 
 nvg__deletePathCache :: (c: *NVGpathCache) {
