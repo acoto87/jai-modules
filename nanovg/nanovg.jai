@@ -34,19 +34,18 @@
 //   [ky sy ty]
 //   [ 0  0  1]
 
-NVG_INIT_FONTIMAGE_SIZE :: 512;
-NVG_MAX_FONTIMAGE_SIZE  :: 2048;
-NVG_MAX_FONTIMAGES      :: 4;
+NVG_INIT_FONTIMAGE_SIZE : s32 : 512;
+NVG_MAX_FONTIMAGE_SIZE  : s32 : 2048;
+NVG_MAX_FONTIMAGES      : s32 : 4;
 
-NVG_INIT_COMMANDS_SIZE  :: 256;
-NVG_INIT_POINTS_SIZE    :: 128;
-NVG_INIT_PATHS_SIZE     :: 16;
-NVG_INIT_VERTS_SIZE     :: 256;
-NVG_MAX_STATES          :: 32;
+NVG_INIT_COMMANDS_SIZE  : s32 : 256;
+NVG_INIT_POINTS_SIZE    : s32 : 128;
+NVG_INIT_PATHS_SIZE     : s32 : 16;
+NVG_INIT_VERTS_SIZE     : s32 : 256;
+NVG_MAX_STATES          : s32 : 32;
 
-NVG_KAPPA90 :: 0.5522847493; // Length proportional to radius of a cubic bezier handle for 90deg arcs.
-
-NVG_PI :: 3.14159265358979323846264338327;
+NVG_KAPPA90 : f32 : 0.5522847493; // Length proportional to radius of a cubic bezier handle for 90deg arcs.
+NVG_PI      : f32 : 3.14159265358979323846264338327;
 
 NVGcommands :: enum s32 {
     NVG_MOVETO   :: 0;
@@ -54,7 +53,6 @@ NVGcommands :: enum s32 {
     NVG_BEZIERTO :: 2;
     NVG_CLOSE    :: 3;
     NVG_WINDING  :: 4;
-    NVG_ADDPATH  :: 5;
 }
 
 NVGcommand :: struct {
@@ -1002,7 +1000,7 @@ nvgResetScissor :: (ctx: *NVGcontext) {
 // which allow to define a path curve by curve.
 //
 // NanoVG uses even-odd fill rule to draw the shapes. Solid shapes should have counter clockwise
-// winding and holes should have counter clockwise order. To specify winding of a path you can
+// winding and holes should have clockwise order. To specify winding of a path you can
 // call nvgPathWinding(). This is useful especially for the common shapes, which are drawn CCW.
 //
 // Finally you can fill the path using current fill style by calling nvgFill(), and stroke it
@@ -1019,13 +1017,6 @@ nvgBeginPath :: (ctx: *NVGcontext) {
 nvgBeginPathBatch :: (ctx: *NVGcontext) {
     ctx.ncommands = 0;
     nvg__clearPathCache(ctx);
-}
-
-// Add a new sub-path.
-nvgAddPath :: (ctx: *NVGcontext) {
-    nvg__appendCommands(ctx,
-        nvg__command(.NVG_ADDPATH)
-    );
 }
 
 // Move to the specified point. This will start a new sub-path if it's not in batch.
@@ -2337,8 +2328,7 @@ nvg__appendCommands :: (ctx: *NVGcontext, cmds: ..NVGcommand) {
     }
 
     firstCmd := cmds[0];
-    if (firstCmd.type != .NVG_ADDPATH &&
-        firstCmd.type != .NVG_CLOSE &&
+    if (firstCmd.type != .NVG_CLOSE &&
         firstCmd.type != .NVG_WINDING)
     {
         lastCmd := cmds[cmds.count - 1];
@@ -2548,8 +2538,6 @@ nvg__flattenPaths :: (ctx: *NVGcontext) {
         cmd := ctx.commands[i];
 
         if cmd.type == {
-            case .NVG_ADDPATH;
-                nvg__addPath(ctx);
             case .NVG_MOVETO;
                 nvg__addPath(ctx);
                 nvg__addPoint(ctx, cmd.args[0], cmd.args[1], .NVG_PT_CORNER);
@@ -2589,10 +2577,12 @@ nvg__flattenPaths :: (ctx: *NVGcontext) {
         // Enforce winding.
         if (path.count > 2) {
             area := nvg__polyArea(pts, path.count);
-            if (path.winding == .NVG_CCW && area < 0.0)
+            if (path.winding == .NVG_CCW && area < 0.0) {
                 nvg__polyReverse(pts, path.count);
-            if (path.winding == .NVG_CW && area > 0.0)
+            }
+            if (path.winding == .NVG_CW && area > 0.0) {
                 nvg__polyReverse(pts, path.count);
+            }
         }
 
         for i : 0..path.count-1 {
@@ -3140,7 +3130,7 @@ nvg__expandFill :: (ctx: *NVGcontext, w: f32, lineJoin: NVGlineCap, miterLimit: 
         pts := *cache.points[path.first];
 
         // Calculate shape vertices.
-        woff := 0.5 * ctx.fringeWidth;
+        woff := 0.5 * w;
         dst = verts;
         path.fill = dst;
 
@@ -3178,11 +3168,17 @@ nvg__expandFill :: (ctx: *NVGcontext, w: f32, lineJoin: NVGlineCap, miterLimit: 
                 p1 += 1;
             }
         } else {
-            if (path.convex) {
-                dst = nvg__triangulate_convex(dst, pts, path.count);
-            } else {
-                nvg__triangulate(dst, pts, path.count);
+            for j : 0..path.count-1 {
+                nvg__vset(dst, pts[j].x, pts[j].y, 0.5, 1);
+                dst += 1;
             }
+
+            // triangulate if batching
+            // if (path.convex) {
+            //     dst = nvg__triangulate_convex(dst, pts, path.count);
+            // } else {
+            //     nvg__triangulate(dst, pts, path.count);
+            // }
         }
 
         path.nfill = cast(s32) (dst - verts);
@@ -3211,7 +3207,7 @@ nvg__expandFill :: (ctx: *NVGcontext, w: f32, lineJoin: NVGlineCap, miterLimit: 
 
             for j : 0..path.count-1 {
                 if ((p1.flags & (NVGpointFlags.NVG_PT_BEVEL | .NVG_PR_INNERBEVEL)) != 0) {
-                    dst = nvg__bevelJoin(dst, p0, p1, lw, rw, lu, ru, ctx.fringeWidth);
+                    dst = nvg__bevelJoin(dst, p0, p1, lw, rw, lu, ru, w);
                 } else {
                     nvg__vset(dst, p1.x + (p1.dmx * lw), p1.y + (p1.dmy * lw), lu, 1);
                     dst += 1;
@@ -3263,7 +3259,6 @@ nvg__command :: inline (cmd: NVGcommands, args: ..f32) -> NVGcommand {
 
 nvg__argCount :: inline (cmd: NVGcommands) -> s32 {
     if cmd == {
-        case .NVG_ADDPATH; return 0;
         case .NVG_MOVETO; return 2;
         case .NVG_LINETO; return 2;
         case .NVG_BEZIERTO; return 6;
