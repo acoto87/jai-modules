@@ -90,8 +90,7 @@ NVGstate :: struct {
 NVGcontext :: struct {
     params: NVGparams;
     commands: List(NVGcommand);
-    commandx: f32;
-    commandy: f32;
+    command: Vec2;
     states: [NVG_MAX_STATES] NVGstate;
     nstates: s32;
     cache: *NVGpathCache;
@@ -109,11 +108,15 @@ NVGcontext :: struct {
 }
 
 NVGpoint :: struct {
-    x,y: f32;
+    x, y: f32;
     dx, dy: f32;
-    len: f32;
     dmx, dmy: f32;
+    length: f32;
     flags: NVGpointFlags;
+
+    #place x;   pos: Vec2;
+    #place dx;  delta: Vec2;
+    #place dmx; dm: Vec2;
 }
 
 NVGpathCache :: struct {
@@ -1055,47 +1058,44 @@ nvgArcTo :: (ctx: *NVGcontext, x1: f32, y1: f32, x2: f32, y2: f32, radius: f32) 
         return;
     }
 
-    x0 := ctx.commandx;
-    y0 := ctx.commandy;
+    v0 := ctx.command;
+    v1 := vec2(x1, y1);
+    v2 := vec2(x2, y2);
 
     // Handle degenerate cases.
-    if (nvg__ptEquals(x0, y0, x1, y1, ctx.distTol) ||
-        nvg__ptEquals(x1,y1, x2,y2, ctx.distTol) ||
-        nvg__distPtSeg(x1,y1, x0,y0, x2,y2) < ctx.distTol * ctx.distTol ||
+    if (equals(v0, v1, ctx.distTol) ||
+        equals(v1, v2, ctx.distTol) ||
+        nvg__distPtSeg(v1, v0, v2) < ctx.distTol * ctx.distTol ||
         radius < ctx.distTol)
     {
-        nvgLineTo(ctx, x1,y1);
+        nvgLineTo(ctx, x1, y1);
         return;
     }
 
     // Calculate tangential circle to lines (x0,y0)-(x1,y1) and (x1,y1)-(x2,y2).
-    dx0 := x0 - x1;
-    dy0 := y0 - y1;
-    dx1 := x2 - x1;
-    dy1 := y2 - y1;
-    nvg__normalize(*dx0, *dy0);
-    nvg__normalize(*dx1, *dy1);
-    a := acosf(dx0 * dx1 + dy0 * dy1);
+    d0 := normalize(v0 - v0);
+    d1 := normalize(v2 - v1);
+    a := acosf(d0.x * d1.y + d0.x * d1.y);
     d := radius / tanf(a / 2.0);
 
     if (d > 10000.0) {
-        nvgLineTo(ctx, x1,y1);
+        nvgLineTo(ctx, v1.x, v2.y);
         return;
     }
 
     cx, cy, a0, a1: f32;
     dir: NVGwinding;
-    if (nvg__cross(dx0,dy0, dx1,dy1) > 0.0) {
-        cx = x1 + dx0 * d + dy0 * radius;
-        cy = y1 + dy0 * d + -dx0 * radius;
-        a0 = atan2f(dx0, -dy0);
-        a1 = atan2f(-dx1, dy1);
+    if (cross(d0, d1) < 0.0) {
+        cx = x1 + d0.x * d + d0.y * radius;
+        cy = y1 + d0.y * d + -d0.x * radius;
+        a0 = atan2f(d0.x, -d0.y);
+        a1 = atan2f(-d1.x, d1.y);
         dir = .NVG_CW;
     } else {
-        cx = x1 + dx0 * d + -dy0 * radius;
-        cy = y1 + dy0 * d + dx0 * radius;
-        a0 = atan2f(-dx0, dy0);
-        a1 = atan2f(dx1, -dy1);
+        cx = x1 + d0.x * d + -d0.y * radius;
+        cy = y1 + d0.y * d + d0.x * radius;
+        a0 = atan2f(-d0.x, d0.y);
+        a1 = atan2f(d1.x, -d1.y);
         dir = .NVG_CCW;
     }
 
@@ -2264,30 +2264,18 @@ nvg__isectRects :: (
     dst[3] = max(0.0, maxy - miny);
 }
 
-nvg__ptEquals :: (x1: f32, y1: f32, x2: f32, y2: f32, tol: f32) -> bool {
-    dx := x2 - x1;
-    dy := y2 - y1;
-    return dx * dx + dy * dy < tol * tol;
-}
 
-nvg__distPtSeg :: (x: f32, y: f32, px: f32, py: f32, qx: f32, qy: f32) -> f32 {
-    pqx := qx - px;
-    pqy := qy - py;
-    dx := x - px;
-    dy := y - py;
-    d := pqx * pqx + pqy * pqy;
-    t := pqx * dx + pqy * dy;
+nvg__distPtSeg :: (v: Vec2, p: Vec2, q: Vec2) -> f32 {
+    pq := q - p;
+    vp := v - p;
+    d := lengthSqr(pq);
+    t := dot(pq, vp);
     if (d > 0) {
         t /= d;
     }
-    if (t < 0) {
-        t = 0;
-    } else if (t > 1) {
-        t = 1;
-    }
-    dx = px + t * pqx - x;
-    dy = py + t * pqy - y;
-    return dx * dx + dy * dy;
+    t = clamp(t, 0, 1);
+    de := p + t * pq - v;
+    return lengthSqr(de);
 }
 
 nvg__appendCommands :: (ctx: *NVGcontext, cmds: ..NVGcommand) {
@@ -2300,8 +2288,10 @@ nvg__appendCommands :: (ctx: *NVGcontext, cmds: ..NVGcommand) {
         lastCmd := cmds[cmds.count - 1];
         argCount := nvg__argCount(lastCmd.type);
         if (argCount > 1) {
-            ctx.commandx = lastCmd.args[argCount - 2];
-            ctx.commandy = lastCmd.args[argCount - 1];
+            ctx.command = vec2(
+                lastCmd.args[argCount - 2],
+                lastCmd.args[argCount - 1]
+            );
         }
     }
 
@@ -2356,17 +2346,18 @@ nvg__addPoint :: (ctx: *NVGcontext, x: f32, y: f32, flags: NVGpointFlags) {
         return;
     }
 
+    pos := vec2(x, y);
+
     if (path != null && ctx.cache.points.count > 0) {
         pt := nvg__lastPoint(ctx);
-        if (nvg__ptEquals(pt.x,pt.y, x,y, ctx.distTol)) {
+        if (equals(pt.pos, pos, ctx.distTol)) {
             pt.flags |= flags;
             return;
         }
     }
 
     pt: NVGpoint;
-    pt.x = x;
-    pt.y = y;
+    pt.pos = pos;
     pt.flags = flags;
     add(*ctx.cache.points, pt);
 
@@ -2409,7 +2400,7 @@ nvg__polyArea :: (pts: *NVGpoint, npts: s32) -> f32 {
     for i : 2..npts-1 {
         b := pts[i - 1];
         c := pts[i];
-        area += nvg__triarea2(a.x,a.y, b.x,b.y, c.x,c.y);
+        area += nvg__triarea2(a.x, a.y, b.x, b.y, c.x, c.y);
     }
     return area * 0.5;
 }
@@ -2430,6 +2421,15 @@ nvg__vtx :: (x: f32, y: f32, u: f32, v: f32) -> NVGvertex {
     vtx: NVGvertex = ---;
     vtx.x = x;
     vtx.y = y;
+    vtx.u = u;
+    vtx.v = v;
+    return vtx;
+}
+
+nvg__vtx :: (p: Vec2, u: f32, v: f32) -> NVGvertex {
+    vtx: NVGvertex = ---;
+    vtx.x = p.x;
+    vtx.y = p.y;
     vtx.u = u;
     vtx.v = v;
     return vtx;
@@ -2511,7 +2511,8 @@ nvg__flattenPaths :: (ctx: *NVGcontext) {
         // If the first and last points are the same, remove the last, mark as closed path.
         p0 := *pts[path.count - 1];
         p1 := *pts[0];
-        if (nvg__ptEquals(p0.x,p0.y, p1.x,p1.y, ctx.distTol)) {
+
+        if (equals(p0.pos, p1.pos, ctx.distTol)) {
             path.closed = true;
             path.count -= 1;
             p0 = *pts[path.count - 1];
@@ -2530,9 +2531,7 @@ nvg__flattenPaths :: (ctx: *NVGcontext) {
 
         for 0..path.count-1 {
             // Calculate segment direction and length
-            p0.dx = p1.x - p0.x;
-            p0.dy = p1.y - p0.y;
-            p0.len = nvg__normalize(*p0.dx, *p0.dy);
+            p0.delta, p0.length = normalize(p1.pos - p0.pos);
             // Update bounds
             cache.bounds[0] = min(cache.bounds[0], p0.x);
             cache.bounds[1] = min(cache.bounds[1], p0.y);
@@ -2550,19 +2549,21 @@ nvg__curveDivs :: (r: f32, arc: f32, tol: f32) -> s32 {
     return max(2, cast(s32) ceilf(arc / da));
 }
 
-nvg__chooseBevel :: (bevel: NVGpointFlags, p0: *NVGpoint, p1: *NVGpoint, w: f32) -> f32, f32, f32, f32
-{
+nvg__chooseBevel :: (bevel: NVGpointFlags, p0: *NVGpoint, p1: *NVGpoint, w: f32) -> Vec2, Vec2 {
+    v0 := p0.pos;
+    v1 := p1.pos;
+    d0 := p0.delta;
+    d1 := p1.delta;
+    dm0 := p0.dm;
+    dm1 := p1.dm;
+
     if (bevel) {
-        return p1.x + p0.dy * w,
-               p1.y - p0.dx * w,
-               p1.x + p1.dy * w,
-               p1.y - p1.dx * w;
+        return vec2(v1.x + d0.y * w, v1.y - d0.x * w),
+               vec2(v1.x + d1.y * w, v1.y - d1.x * w);
     }
 
-    return p1.x + p1.dmx * w,
-           p1.y + p1.dmy * w,
-           p1.x + p1.dmx * w,
-           p1.y + p1.dmy * w;
+    return v1 + dm1 * w,
+           v1 + dm1 * w;
 }
 
 nvg__roundJoin :: (
@@ -2570,59 +2571,62 @@ nvg__roundJoin :: (
     lw: f32, rw: f32, lu: f32, ru: f32, ncap: s32,
     fringe: f32)
 {
-    dlx0 := p0.dy;
-    dly0 := -p0.dx;
-    dlx1 := p1.dy;
-    dly1 := -p1.dx;
+    v0 := p0.pos;
+    v1 := p1.pos;
+    d0 := p0.delta;
+    d1 := p1.delta;
+    dm0 := p0.dm;
+    dm1 := p1.dm;
+
+    dl0 := perpendicularCW(p0.delta);
+    dl1 := perpendicularCW(p1.delta);
 
     if (p1.flags & .NVG_PT_LEFT) {
-        lx0, ly0, lx1, ly1 := nvg__chooseBevel(p1.flags & .NVG_PR_INNERBEVEL, p0, p1, lw);
+        l0, l1 := nvg__chooseBevel(p1.flags & .NVG_PR_INNERBEVEL, p0, p1, lw);
 
-        a0 := atan2f(-dly0, -dlx0);
-        a1 := atan2f(-dly1, -dlx1);
+        a0 := atan2f(-dl0.y, -dl0.x);
+        a1 := atan2f(-dl1.y, -dl1.x);
         if (a1 > a0) {
             a1 -= cast(f32) (NVG_PI * 2);
         }
 
-        add(dst, nvg__vtx(lx0, ly0, lu,1));
-        add(dst, nvg__vtx(p1.x - dlx0 * rw, p1.y - dly0 * rw, ru,1));
+        add(dst, nvg__vtx(l0, lu, 1));
+        add(dst, nvg__vtx(v1 - dl0 * rw, ru, 1));
 
         n := clamp(cast(s32) ceilf(((a0 - a1) / NVG_PI) * ncap), 2, ncap);
         for i : 0..n-1 {
             u := i / cast(f32)(n - 1);
             a := a0 + u * (a1 - a0);
-            rx := p1.x + cosf(a) * rw;
-            ry := p1.y + sinf(a) * rw;
-            add(dst, nvg__vtx(p1.x, p1.y, 0.5,1));
-            add(dst, nvg__vtx(rx, ry, ru,1));
+            av := vec2(cosf(a), sinf(a));
+            add(dst, nvg__vtx(v1, 0.5, 1));
+            add(dst, nvg__vtx(v1 + av * rw, ru, 1));
         }
 
-        add(dst, nvg__vtx(lx1, ly1, lu,1));
-        add(dst, nvg__vtx(p1.x - dlx1 * rw, p1.y - dly1 * rw, ru,1));
+        add(dst, nvg__vtx(l1, lu, 1));
+        add(dst, nvg__vtx(v1 - dl1 * rw, ru, 1));
     } else {
-        rx0, ry0, rx1, ry1 := nvg__chooseBevel(p1.flags & .NVG_PR_INNERBEVEL, p0, p1, -rw);
+        r0, r1 := nvg__chooseBevel(p1.flags & .NVG_PR_INNERBEVEL, p0, p1, -rw);
 
-        a0 := atan2f(dly0, dlx0);
-        a1 := atan2f(dly1, dlx1);
+        a0 := atan2f(dl0.y, dl0.x);
+        a1 := atan2f(dl1.y, dl1.x);
         if (a1 < a0) {
             a1 += cast(f32) (NVG_PI * 2);
         }
 
-        add(dst, nvg__vtx(p1.x + dlx0 * rw, p1.y + dly0 * rw, lu,1));
-        add(dst, nvg__vtx(rx0, ry0, ru,1));
+        add(dst, nvg__vtx(v1 + dl0 * rw, lu, 1));
+        add(dst, nvg__vtx(r0, ru, 1));
 
         n := clamp(cast(s32) ceilf(((a1 - a0) / NVG_PI) * ncap), 2, ncap);
         for i : 0..n-1 {
             u := i / cast(f32)(n - 1);
             a := a0 + u * (a1 - a0);
-            lx := p1.x + cosf(a) * lw;
-            ly := p1.y + sinf(a) * lw;
-            add(dst, nvg__vtx(lx, ly, lu,1));
-            add(dst, nvg__vtx(p1.x, p1.y, 0.5,1));
+            av := vec2(cosf(a), sinf(a));
+            add(dst, nvg__vtx(v1 + av * lw, lu,1));
+            add(dst, nvg__vtx(v1, 0.5,1));
         }
 
-        add(dst, nvg__vtx(p1.x + dlx1 * rw, p1.y + dly1 * rw, lu,1));
-        add(dst, nvg__vtx(rx1, ry1, ru,1));
+        add(dst, nvg__vtx(v1 + dl1 * rw, lu,1));
+        add(dst, nvg__vtx(r1, ru,1));
     }
 }
 
@@ -2630,68 +2634,71 @@ nvg__bevelJoin :: (
     verts: *List(NVGvertex), p0: *NVGpoint, p1: *NVGpoint,
     lw: f32, rw: f32, lu: f32, ru: f32, fringe: f32)
 {
-    dlx0 := p0.dy;
-    dly0 := -p0.dx;
-    dlx1 := p1.dy;
-    dly1 := -p1.dx;
+    v0 := p0.pos;
+    v1 := p1.pos;
+    d0 := p0.delta;
+    d1 := p1.delta;
+    dm0 := p0.dm;
+    dm1 := p1.dm;
+
+    dl0 := perpendicularCW(p0.delta);
+    dl1 := perpendicularCW(p1.delta);
 
     if (p1.flags & .NVG_PT_LEFT) {
-        lx0, ly0, lx1, ly1 := nvg__chooseBevel(p1.flags & .NVG_PR_INNERBEVEL, p0, p1, lw);
+        l0, l1 := nvg__chooseBevel(p1.flags & .NVG_PR_INNERBEVEL, p0, p1, lw);
 
-        add(verts, nvg__vtx(lx0, ly0, lu,1));
-        add(verts, nvg__vtx(p1.x - dlx0 * rw, p1.y - dly0 * rw, ru,1));
+        add(verts, nvg__vtx(l0, lu, 1));
+        add(verts, nvg__vtx(v1 - dl0 * rw, ru, 1));
 
         if (p1.flags & .NVG_PT_BEVEL) {
-            add(verts, nvg__vtx(lx0, ly0, lu,1));
-            add(verts, nvg__vtx(p1.x - dlx0 * rw, p1.y - dly0 * rw, ru,1));
+            add(verts, nvg__vtx(l0, lu, 1));
+            add(verts, nvg__vtx(v1 - dl0 * rw, ru, 1));
 
-            add(verts, nvg__vtx(lx1, ly1, lu,1));
-            add(verts, nvg__vtx(p1.x - dlx1 * rw, p1.y - dly1 * rw, ru,1));
+            add(verts, nvg__vtx(l1, lu, 1));
+            add(verts, nvg__vtx(v1 - dl1 * rw, ru, 1));
         } else {
-            rx0 := p1.x - p1.dmx * rw;
-            ry0 := p1.y - p1.dmy * rw;
+            r0 := v1 - dm1 * rw;
 
-            add(verts, nvg__vtx(p1.x, p1.y, 0.5,1));
-            add(verts, nvg__vtx(p1.x - dlx0 * rw, p1.y - dly0 * rw, ru,1));
+            add(verts, nvg__vtx(v1, 0.5, 1));
+            add(verts, nvg__vtx(v1 - dl0 * rw, ru, 1));
 
-            add(verts, nvg__vtx(rx0, ry0, ru,1));
-            add(verts, nvg__vtx(rx0, ry0, ru,1));
+            add(verts, nvg__vtx(r0, ru, 1));
+            add(verts, nvg__vtx(r0, ru, 1));
 
-            add(verts, nvg__vtx(p1.x, p1.y, 0.5,1));
-            add(verts, nvg__vtx(p1.x - dlx1 * rw, p1.y - dly1 * rw, ru,1));
+            add(verts, nvg__vtx(v1, 0.5,1));
+            add(verts, nvg__vtx(v1 - dl1 * rw, ru, 1));
         }
 
-        add(verts, nvg__vtx(lx1, ly1, lu,1));
-        add(verts, nvg__vtx(p1.x - dlx1 * rw, p1.y - dly1 * rw, ru,1));
+        add(verts, nvg__vtx(l1, lu,1));
+        add(verts, nvg__vtx(v1 - dl1 * rw, ru, 1));
 
     } else {
-        rx0, ry0, rx1, ry1 := nvg__chooseBevel(p1.flags & .NVG_PR_INNERBEVEL, p0, p1, -rw);
+        r0, r1 := nvg__chooseBevel(p1.flags & .NVG_PR_INNERBEVEL, p0, p1, -rw);
 
-        add(verts, nvg__vtx(p1.x + dlx0 * lw, p1.y + dly0 * lw, lu,1));
-        add(verts, nvg__vtx(rx0, ry0, ru,1));
+        add(verts, nvg__vtx(v1 + dl0 * lw, lu, 1));
+        add(verts, nvg__vtx(r0, ru, 1));
 
         if (p1.flags & .NVG_PT_BEVEL) {
-            add(verts, nvg__vtx(p1.x + dlx0 * lw, p1.y + dly0 * lw, lu,1));
-            add(verts, nvg__vtx(rx0, ry0, ru,1));
+            add(verts, nvg__vtx(v1 + dl0 * lw, lu, 1));
+            add(verts, nvg__vtx(r0, ru, 1));
 
-            add(verts, nvg__vtx(p1.x + dlx1 * lw, p1.y + dly1 * lw, lu,1));
-            add(verts, nvg__vtx(rx1, ry1, ru,1));
+            add(verts, nvg__vtx(v1 + dl1 * lw, lu, 1));
+            add(verts, nvg__vtx(r1, ru, 1));
         } else {
-            lx0 := p1.x + p1.dmx * lw;
-            ly0 := p1.y + p1.dmy * lw;
+            l0 := v1 + dm1 * lw;
 
-            add(verts, nvg__vtx(p1.x + dlx0 * lw, p1.y + dly0 * lw, lu,1));
-            add(verts, nvg__vtx(p1.x, p1.y, 0.5,1));
+            add(verts, nvg__vtx(v1 + dl0 * lw, lu, 1));
+            add(verts, nvg__vtx(v1, 0.5, 1));
 
-            add(verts, nvg__vtx(lx0, ly0, lu,1));
-            add(verts, nvg__vtx(lx0, ly0, lu,1));
+            add(verts, nvg__vtx(l0, lu, 1));
+            add(verts, nvg__vtx(l0, lu, 1));
 
-            add(verts, nvg__vtx(p1.x + dlx1 * lw, p1.y + dly1 * lw, lu,1));
-            add(verts, nvg__vtx(p1.x, p1.y, 0.5,1));
+            add(verts, nvg__vtx(v1 + dl1 * lw, lu, 1));
+            add(verts, nvg__vtx(v1, 0.5, 1));
         }
 
-        add(verts, nvg__vtx(p1.x + dlx1 * lw, p1.y + dly1 * lw, lu,1));
-        add(verts, nvg__vtx(rx1, ry1, ru,1));
+        add(verts, nvg__vtx(v1 + dl1 * lw, lu, 1));
+        add(verts, nvg__vtx(r1, ru, 1));
     }
 }
 
@@ -2700,15 +2707,14 @@ nvg__buttCapStart :: (
     dx: f32, dy: f32, w: f32, d: f32,
     aa: f32, u0: f32, u1: f32)
 {
-    px := p.x - dx * d;
-    py := p.y - dy * d;
-    dlx := dy;
-    dly := -dx;
+    dd := vec2(dx, dy);
+    v := p.pos - dd * d;
+    dl := perpendicularCW(dd);
 
-    add(verts, nvg__vtx(px + dlx * w - dx * aa, py + dly * w - dy * aa, u0,0));
-    add(verts, nvg__vtx(px - dlx * w - dx * aa, py - dly * w - dy * aa, u1,0));
-    add(verts, nvg__vtx(px + dlx * w, py + dly * w, u0,1));
-    add(verts, nvg__vtx(px - dlx * w, py - dly * w, u1,1));
+    add(verts, nvg__vtx(v + dl * w - dd * aa, u0, 0));
+    add(verts, nvg__vtx(v - dl * w - dd * aa, u1, 0));
+    add(verts, nvg__vtx(v + dl * w, u0, 1));
+    add(verts, nvg__vtx(v - dl * w, u1, 1));
 }
 
 nvg__buttCapEnd :: (
@@ -2716,15 +2722,14 @@ nvg__buttCapEnd :: (
     dx: f32, dy: f32, w: f32, d: f32,
     aa: f32, u0: f32, u1: f32)
 {
-    px := p.x + dx * d;
-    py := p.y + dy * d;
-    dlx := dy;
-    dly := -dx;
+    dd := vec2(dx, dy);
+    v := p.pos + dd * d;
+    dl := perpendicularCW(dd);
 
-    add(verts, nvg__vtx(px + dlx * w, py + dly * w, u0,1));
-    add(verts, nvg__vtx(px - dlx * w, py - dly * w, u1,1));
-    add(verts, nvg__vtx(px + dlx * w + dx * aa, py + dly * w + dy * aa, u0,0));
-    add(verts, nvg__vtx(px - dlx * w + dx * aa, py - dly * w + dy * aa, u1,0));
+    add(verts, nvg__vtx(v + dl * w, u0, 1));
+    add(verts, nvg__vtx(v - dl * w, u1, 1));
+    add(verts, nvg__vtx(v + dl * w + dd * aa, u0, 0));
+    add(verts, nvg__vtx(v - dl * w + dd * aa, u1, 0));
 }
 
 nvg__roundCapStart :: (
@@ -2732,20 +2737,18 @@ nvg__roundCapStart :: (
     dx: f32, dy: f32, w: f32, ncap: s32,
     aa: f32, u0: f32, u1: f32)
 {
-    px := p.x;
-    py := p.y;
-    dlx := dy;
-    dly := -dx;
+    dd := vec2(dx, dy);
+    v := p.pos;
+    dl := perpendicularCW(dd);
 
     for i : 0..ncap-1 {
         a := i / cast(f32) (ncap - 1) * NVG_PI;
-        ax := cosf(a) * w;
-        ay := sinf(a) * w;
-        add(verts, nvg__vtx(px - dlx * ax - dx * ay, py - dly * ax - dy * ay, u0,1));
-        add(verts, nvg__vtx(px, py, 0.5,1));
+        av := vec2(cosf(a), sinf(a)) * w;
+        add(verts, nvg__vtx(v - dl * av.x - dd * av.y, u0, 1));
+        add(verts, nvg__vtx(v, 0.5, 1));
     }
-    add(verts, nvg__vtx(px + dlx * w, py + dly * w, u0,1));
-    add(verts, nvg__vtx(px - dlx * w, py - dly * w, u1,1));
+    add(verts, nvg__vtx(v + dl * w, u0, 1));
+    add(verts, nvg__vtx(v - dl * w, u1, 1));
 }
 
 nvg__roundCapEnd :: (
@@ -2753,20 +2756,18 @@ nvg__roundCapEnd :: (
     dx: f32, dy: f32, w: f32, ncap: s32,
     aa: f32, u0: f32, u1: f32)
 {
-    px := p.x;
-    py := p.y;
-    dlx := dy;
-    dly := -dx;
+    v := p.pos;
+    dd := vec2(dx, dy);
+    dl := perpendicularCW(dd);
 
-    add(verts, nvg__vtx(px + dlx * w, py + dly * w, u0,1));
-    add(verts, nvg__vtx(px - dlx * w, py - dly * w, u1,1));
+    add(verts, nvg__vtx(v + dl * w, u0,1));
+    add(verts, nvg__vtx(v - dl * w, u1,1));
 
     for i : 0..ncap-1 {
         a := i / cast(f32)(ncap - 1) * NVG_PI;
-        ax := cosf(a) * w;
-        ay := sinf(a) * w;
-        add(verts, nvg__vtx(px, py, 0.5,1));
-        add(verts, nvg__vtx(px - dlx * ax + dx * ay, py - dly * ax + dy * ay, u0,1));
+        av := vec2(cosf(a), sinf(a)) * w;
+        add(verts, nvg__vtx(v, 0.5, 1));
+        add(verts, nvg__vtx(v - dl * av.x + dd * av.y, u0, 1));
     }
 }
 
@@ -2786,40 +2787,35 @@ nvg__calculateJoins :: (ctx: *NVGcontext, w: f32, lineJoin: NVGlineCap, miterLim
         p1 := *pts[0];
 
         nleft: s32 = 0;
-
         path.nbevel = 0;
 
         for j : 0..path.count-1 {
-            dlx0 := p0.dy;
-            dly0 := -p0.dx;
-            dlx1 := p1.dy;
-            dly1 := -p1.dx;
+            dl0 := perpendicularCW(p0.delta);
+            dl1 := perpendicularCW(p1.delta);
 
             // Calculate extrusions
-            p1.dmx = (dlx0 + dlx1) * 0.5;
-            p1.dmy = (dly0 + dly1) * 0.5;
-            dmr2 := p1.dmx * p1.dmx + p1.dmy * p1.dmy;
+            p1.dm = (dl0 + dl1) * 0.5;
+            dmr2 := lengthSqr(p1.dm);
             if (dmr2 > 0.000001) {
                 scale := 1.0 / dmr2;
                 if (scale > 600.0) {
                     scale = 600.0;
                 }
-                p1.dmx *= scale;
-                p1.dmy *= scale;
+                p1.dm *= scale;
             }
 
             // Clear flags, but keep the corner.
             p1.flags = (p1.flags & .NVG_PT_CORNER);
 
             // Keep track of left turns.
-            cross := p1.dx * p0.dy - p0.dx * p1.dy;
-            if (cross > 0.0) {
+            turnLeft := cross(p1.delta, p0.delta) > 0.0;
+            if (turnLeft) {
                 nleft += 1;
                 p1.flags |= .NVG_PT_LEFT;
             }
 
             // Calculate if we should use bevel or miter for inner join.
-            limit := max(1.01, min(p0.len, p1.len) * iw);
+            limit := max(1.01, min(p0.length, p1.length) * iw);
             if ((dmr2 * limit * limit) < 1.0) {
                 p1.flags |= .NVG_PR_INNERBEVEL;
             }
@@ -2861,26 +2857,26 @@ nvg__expandStroke :: (ctx: *NVGcontext, w: f32, fringe: f32, lineCap: NVGlineCap
     nvg__calculateJoins(ctx, w, lineJoin, miterLimit);
 
     // Calculate max vertex usage.
-    cverts: s32 = 0;
+    nverts: s32 = 0;
     for * path : cache.paths {
         if (lineJoin == .NVG_ROUND) {
-            cverts += (path.count + path.nbevel * (ncap + 2) + 1) * 2; // plus one for loop
+            nverts += (path.count + path.nbevel * (ncap + 2) + 1) * 2; // plus one for loop
         } else {
-            cverts += (path.count + path.nbevel * 5 + 1) * 2; // plus one for loop
+            nverts += (path.count + path.nbevel * 5 + 1) * 2; // plus one for loop
         }
 
         if (!path.closed) {
             // space for caps
             if (lineCap == .NVG_ROUND) {
-                cverts += (ncap * 2 + 2) * 2;
+                nverts += (ncap * 2 + 2) * 2;
             } else {
-                cverts += (3 + 3) * 2;
+                nverts += (3 + 3) * 2;
             }
         }
     }
 
     verts := *cache.verts;
-    ensureCapacity(verts, cverts);
+    ensureCapacity(verts, nverts);
     clear(verts);
 
     for * path : cache.paths {
@@ -2913,15 +2909,13 @@ nvg__expandStroke :: (ctx: *NVGcontext, w: f32, fringe: f32, lineCap: NVGlineCap
 
         if (!path.closed) {
             // Add cap
-            dx := p1.x - p0.x;
-            dy := p1.y - p0.y;
-            nvg__normalize(*dx, *dy);
+            d := normalize(p1.pos - p0.pos);
             if (lineCap == .NVG_BUTT) {
-                nvg__buttCapStart(verts, p0, dx, dy, w, -fringe * 0.5, fringe, u0, u1);
+                nvg__buttCapStart(verts, p0, d.x, d.y, w, -fringe * 0.5, fringe, u0, u1);
             } else if (lineCap == .NVG_BUTT || lineCap == .NVG_SQUARE) {
-                nvg__buttCapStart(verts, p0, dx, dy, w, w - fringe, fringe, u0, u1);
+                nvg__buttCapStart(verts, p0, d.x, d.y, w, w - fringe, fringe, u0, u1);
             } else if (lineCap == .NVG_ROUND) {
-                nvg__roundCapStart(verts, p0, dx, dy, w, ncap, fringe, u0, u1);
+                nvg__roundCapStart(verts, p0, d.x, d.y, w, ncap, fringe, u0, u1);
             }
         }
 
@@ -2933,8 +2927,8 @@ nvg__expandStroke :: (ctx: *NVGcontext, w: f32, fringe: f32, lineCap: NVGlineCap
                     nvg__bevelJoin(verts, p0, p1, w, w, u0, u1, fringe);
                 }
             } else {
-                add(verts, nvg__vtx(p1.x + (p1.dmx * w), p1.y + (p1.dmy * w), u0,1));
-                add(verts, nvg__vtx(p1.x - (p1.dmx * w), p1.y - (p1.dmy * w), u1,1));
+                add(verts, nvg__vtx(p1.pos + (p1.dm * w), u0, 1));
+                add(verts, nvg__vtx(p1.pos - (p1.dm * w), u1, 1));
             }
             p0 = p1;
             p1 += 1;
@@ -2942,19 +2936,19 @@ nvg__expandStroke :: (ctx: *NVGcontext, w: f32, fringe: f32, lineCap: NVGlineCap
 
         if (path.closed) {
             // Loop it
-            add(verts, nvg__vtx(ref(verts, prevCount + 0).x, ref(verts, prevCount + 0).y, u0,1));
-            add(verts, nvg__vtx(ref(verts, prevCount + 1).x, ref(verts, prevCount + 1).y, u1,1));
+            a := get(verts, prevCount + 0);
+            b := get(verts, prevCount + 1);
+            add(verts, nvg__vtx(a.x, a.y, u0, 1));
+            add(verts, nvg__vtx(b.x, b.y, u1, 1));
         } else {
             // Add cap
-            dx := p1.x - p0.x;
-            dy := p1.y - p0.y;
-            nvg__normalize(*dx, *dy);
+            d := normalize(p1.pos - p0.pos);
             if (lineCap == .NVG_BUTT) {
-                nvg__buttCapEnd(verts, p1, dx, dy, w, -fringe * 0.5, fringe, u0, u1);
+                nvg__buttCapEnd(verts, p1, d.x, d.y, w, -fringe * 0.5, fringe, u0, u1);
             } else if (lineCap == .NVG_BUTT || lineCap == .NVG_SQUARE) {
-                nvg__buttCapEnd(verts, p1, dx, dy, w, w - fringe, fringe, u0, u1);
+                nvg__buttCapEnd(verts, p1, d.x, d.y, w, w - fringe, fringe, u0, u1);
             } else if (lineCap == .NVG_ROUND) {
-                nvg__roundCapEnd(verts, p1, dx, dy, w, ncap, fringe, u0, u1);
+                nvg__roundCapEnd(verts, p1, d.x, d.y, w, ncap, fringe, u0, u1);
             }
         }
 
@@ -3000,39 +2994,27 @@ nvg__expandFill :: (ctx: *NVGcontext, w: f32, lineJoin: NVGlineCap, miterLimit: 
 
             for j : 0..path.count-1 {
                 if (p1.flags & .NVG_PT_BEVEL) {
-                    dlx0 := p0.dy;
-                    dly0 := -p0.dx;
-                    dlx1 := p1.dy;
-                    dly1 := -p1.dx;
+                    dl0 := perpendicularCW(p0.delta);
+                    dl1 := perpendicularCW(p1.delta);
                     if (p1.flags & .NVG_PT_LEFT) {
-                        lx := p1.x + p1.dmx * woff;
-                        ly := p1.y + p1.dmy * woff;
-                        add(verts, nvg__vtx(lx, ly, 0.5, 1));
+                        l := p1.pos + p1.dm * woff;
+                        add(verts, nvg__vtx(l, 0.5, 1));
                     } else {
-                        lx0 := p1.x + dlx0 * woff;
-                        ly0 := p1.y + dly0 * woff;
-                        lx1 := p1.x + dlx1 * woff;
-                        ly1 := p1.y + dly1 * woff;
-                        add(verts, nvg__vtx(lx0, ly0, 0.5, 1));
-                        add(verts, nvg__vtx(lx1, ly1, 0.5, 1));
+                        l0 := p1.pos + dl0 * woff;
+                        l1 := p1.pos + dl1 * woff;
+                        add(verts, nvg__vtx(l0, 0.5, 1));
+                        add(verts, nvg__vtx(l1, 0.5, 1));
                     }
                 } else {
-                    add(verts, nvg__vtx(p1.x + (p1.dmx * woff), p1.y + (p1.dmy * woff), 0.5, 1));
+                    add(verts, nvg__vtx(p1.pos + p1.dm * woff, 0.5, 1));
                 }
                 p0 = p1;
                 p1 += 1;
             }
         } else {
             for j : 0..path.count-1 {
-                add(verts, nvg__vtx(pts[j].x, pts[j].y, 0.5, 1));
+                add(verts, nvg__vtx(pts[j].pos, 0.5, 1));
             }
-
-            // triangulate if batching
-            // if (path.convex) {
-            //     dst = nvg__triangulate_convex(dst, pts, path.count);
-            // } else {
-            //     nvg__triangulate(dst, pts, path.count);
-            // }
         }
 
         path.fill = ref(verts, prevCount);
@@ -3062,16 +3044,18 @@ nvg__expandFill :: (ctx: *NVGcontext, w: f32, lineJoin: NVGlineCap, miterLimit: 
                 if ((p1.flags & (NVGpointFlags.NVG_PT_BEVEL | .NVG_PR_INNERBEVEL)) != 0) {
                     nvg__bevelJoin(verts, p0, p1, lw, rw, lu, ru, w);
                 } else {
-                    add(verts, nvg__vtx(p1.x + (p1.dmx * lw), p1.y + (p1.dmy * lw), lu, 1));
-                    add(verts, nvg__vtx(p1.x - (p1.dmx * rw), p1.y - (p1.dmy * rw), ru, 1));
+                    add(verts, nvg__vtx(p1.pos + p1.dm * lw, lu, 1));
+                    add(verts, nvg__vtx(p1.pos - p1.dm * rw, ru, 1));
                 }
                 p0 = p1;
                 p1 += 1;
             }
 
             // Loop it
-            add(verts, nvg__vtx(ref(verts, prevCount + 0).x, ref(verts, prevCount + 0).y, lu, 1));
-            add(verts, nvg__vtx(ref(verts, prevCount + 1).x, ref(verts, prevCount + 1).y, ru, 1));
+            a := get(verts, prevCount + 0);
+            b := get(verts, prevCount + 1);
+            add(verts, nvg__vtx(a.x, a.y, lu, 1));
+            add(verts, nvg__vtx(b.x, b.y, ru, 1));
 
             path.stroke = ref(verts, prevCount);
             path.nstroke = cast(s32) (verts.count - prevCount);
@@ -3081,21 +3065,6 @@ nvg__expandFill :: (ctx: *NVGcontext, w: f32, lineJoin: NVGlineCap, miterLimit: 
         }
     }
 }
-
-// nvg__triangulate_convex :: (verts: *NVGvertex, pts: *NVGpoint, npts: s32) -> *NVGvertex {
-//     for j : 2..npts-1 {
-//         nvg__vset(verts, pts[0].x, pts[0].y, 0.5, 1);
-//         verts += 1;
-//         nvg__vset(verts, pts[j-1].x, pts[j-1].y, 0.5, 1);
-//         verts += 1;
-//         nvg__vset(verts, pts[j].x, pts[j].y, 0.5, 1);
-//         verts += 1;
-//     }
-//     return verts;
-// }
-
-// nvg__triangulate :: (verts: *NVGvertex, pts: *NVGpoint, npts: s32) {
-// }
 
 nvg__command :: inline (cmd: NVGcommands, args: ..f32) -> NVGcommand {
     result: NVGcommand;
@@ -3166,7 +3135,9 @@ nvg__quantize :: (a: f32, d: f32) -> f32 {
 }
 
 nvg__getFontScale :: (state: *NVGstate) -> f32 {
-    return min(nvg__quantize(nvg__getAverageScale(state.xform), 0.01), 4.0);
+    scale := nvg__getAverageScale(state.xform);
+    q := nvg__quantize(scale, 0.01);
+    return min(q, 4.0);
 }
 
 nvg__flushTextTexture :: (ctx: *NVGcontext) {
@@ -3181,7 +3152,7 @@ nvg__flushTextTexture :: (ctx: *NVGcontext) {
             y := dirty[1];
             w := dirty[2] - dirty[0];
             h := dirty[3] - dirty[1];
-            ctx.params.renderUpdateTexture(ctx.params.userPtr, fontImage, x,y, w,h, data);
+            ctx.params.renderUpdateTexture(ctx.params.userPtr, fontImage, x, y, w, h, data);
         }
     }
 }
@@ -3235,21 +3206,7 @@ nvg__nvgAlignToFONSAlign :: inline (align: NVGalign) -> FONSalign {
     return cast(FONSalign) (cast(s32) align);
 }
 
-nvg__isTransformFlipped :: (xform: [] f32) -> bool {
+nvg__isTransformFlipped :: inline (xform: [] f32) -> bool {
     det := xform[0] * xform[3] - xform[2] * xform[1];
     return det < 0;
-}
-
-nvg__cross :: (x0: f32, y0: f32, x1: f32, y1: f32) -> f32 {
-    return x1 * y0 - x0 * y1;
-}
-
-nvg__normalize :: (x: *f32, y: *f32) -> f32 {
-    d := sqrtf((<<x) * (<<x) + (<<y) * (<<y));
-    if (d > 1.0e-6) {
-        id := 1.0 / d;
-        <<x *= id;
-        <<y *= id;
-    }
-    return d;
 }
