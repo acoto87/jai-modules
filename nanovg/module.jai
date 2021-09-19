@@ -58,3 +58,7 @@ NVG_DISABLE_CULL_FACE :: disableCullFace;
 #if NANOVG_GL {
     #load "nanovg_gl.jai";
 }
+
+#scope_module
+
+#import "collections";

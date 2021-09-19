@@ -327,16 +327,22 @@ for_expansion :: (list: *$T/List, body: Code, flags: For_Flags) #expand {
     }
 }
 
+ensureCapacity :: inline (list: *$T/List, capacity: s64) {
+    if (capacity > list.capacity) {
+        resize(list, capacity);
+    }
+}
+
 #scope_file
 
 #import "utils";
 
-resize :: (list: *$T/List, minSize: s64) {
+resize :: (list: *$T/List, minCapacity: s64) {
     oldCapacity := list.capacity;
 
     list.capacity = oldCapacity * 2;
-    if (list.capacity < minSize) {
-        list.capacity = minSize;
+    if (list.capacity < minCapacity) {
+        list.capacity = minCapacity;
     }
 
     list.items = realloc(list.items, list.capacity, oldCapacity, list.allocator);
