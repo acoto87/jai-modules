@@ -236,10 +236,8 @@ GLNVGfragUniforms :: struct {
 
 GLNVGcontext :: struct {
     shader: GLNVGshader;
-    textures: *GLNVGtexture;
     view: [2] f32;
-    ntextures: s32;
-    ctextures: s32;
+    textures: List(GLNVGtexture);
     textureId: s32;
     vertBuf: GLuint;
     #if NANOVG_GL3 {
@@ -284,6 +282,11 @@ nvg__createGL :: (flags: NVGcreateFlags) -> *NVGcontext {
     }
 
     gl.flags = flags;
+
+    gl.textures = createList(GLNVGtexture);
+    if (gl.textures.items == null) {
+        return null;
+    }
 
     params: NVGparams;
     params.renderCreate = glnvg__renderCreate;
@@ -404,46 +407,36 @@ glnvg__blendFuncSeparate :: (gl: *GLNVGcontext, blend: *GLNVGblend) {
 }
 
 glnvg__allocTexture :: (gl: *GLNVGcontext) -> *GLNVGtexture {
-    tex := glnvg__findTexture(gl, 0);
+    texture := glnvg__findTexture(gl, 0);
 
-    if (tex == null) {
-        if (gl.ntextures + 1 > gl.ctextures) {
-            ctextures := max(gl.ntextures + 1, 4) +  gl.ctextures / 2; // 1.5x Overallocate
-            textures := realloc(gl.textures, ctextures);
-            if (textures == null) {
-                return null;
-            }
-            gl.textures = textures;
-            gl.ctextures = ctextures;
-        }
-        tex = *gl.textures[gl.ntextures];
-        gl.ntextures += 1;
+    if (texture == null) {
+        texture = addNew(*gl.textures);
     }
 
-    memoryClear(tex);
+    memoryClear(texture);
 
     gl.textureId += 1;
 
-    tex.id = gl.textureId;
-    return tex;
+    texture.id = gl.textureId;
+    return texture;
 }
 
 glnvg__findTexture :: (gl: *GLNVGcontext, id: s32) -> *GLNVGtexture {
-    for i : 0..gl.ntextures-1 {
-        if (gl.textures[i].id == id) {
-            return *gl.textures[i];
+    for * texture : gl.textures {
+        if (texture.id == id) {
+            return texture;
         }
     }
     return null;
 }
 
 glnvg__deleteTexture :: (gl: *GLNVGcontext, id: s32) -> bool {
-    for i : 0..gl.ntextures-1 {
-        if (gl.textures[i].id == id) {
-            if (gl.textures[i].tex != 0 && (gl.textures[i].flags & .NVG_IMAGE_NODELETE) == 0) {
-                glDeleteTextures(1, *gl.textures[i].tex);
+    for * texture : gl.textures {
+        if (texture.id == id) {
+            if (texture.tex != 0 && (texture.flags & .NVG_IMAGE_NODELETE) == 0) {
+                glDeleteTextures(1, *texture.tex);
             }
-            memoryClear(*gl.textures[i]);
+            memoryClear(texture);
             return true;
         }
     }
@@ -1802,12 +1795,13 @@ glnvg__renderDelete :: (uptr: *void) {
         glDeleteBuffers(1, *gl.vertBuf);
     }
 
-    for i : 0..gl.ntextures-1 {
-        if (gl.textures[i].tex != 0 && (gl.textures[i].flags & .NVG_IMAGE_NODELETE) == 0) {
-            glDeleteTextures(1, *gl.textures[i].tex);
+    for * texture : gl.textures {
+        if (texture.tex != 0 && (texture.flags & .NVG_IMAGE_NODELETE) == 0) {
+            glDeleteTextures(1, *texture.tex);
         }
     }
-    free(gl.textures);
+
+    uninit(*gl.textures);
 
     free(gl.paths);
     free(gl.verts);

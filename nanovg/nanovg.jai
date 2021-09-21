@@ -249,6 +249,7 @@ NVGcodepointType :: enum s32 {
 // devicePixelRatio to: frameBufferWidth / windowWidth.
 nvgBeginFrame :: (ctx: *NVGcontext, windowWidth: f32, windowHeight: f32, devicePixelRatio: f32) {
     ctx.nstates = 0;
+
     nvgSave(ctx);
     nvgReset(ctx);
 
