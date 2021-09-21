@@ -250,9 +250,7 @@ GLNVGcontext :: struct {
     flags: NVGcreateFlags;
 
     // Per frame buffers
-    calls: *GLNVGcall;
-    ccalls: s32;
-    ncalls: s32;
+    calls: List(GLNVGcall);
     paths: *GLNVGpath;
     cpaths: s32;
     npaths: s32;
@@ -283,8 +281,17 @@ nvg__createGL :: (flags: NVGcreateFlags) -> *NVGcontext {
 
     gl.flags = flags;
 
-    gl.textures = createList(GLNVGtexture);
+    gl.textures = createList(GLNVGtexture, ListOptions(GLNVGtexture).{
+        capacity = 8
+    });
     if (gl.textures.items == null) {
+        return null;
+    }
+
+    gl.calls = createList(GLNVGcall, ListOptions(GLNVGcall).{
+        capacity = 128
+    });
+    if (gl.calls.items == null) {
         return null;
     }
 
@@ -1217,7 +1224,7 @@ glnvg__renderCancel :: (uptr: *void) {
     gl := cast(*GLNVGcontext) uptr;
     gl.nverts = 0;
     gl.npaths = 0;
-    gl.ncalls = 0;
+    clear(*gl.calls);
     gl.nuniforms = 0;
 }
 
@@ -1260,7 +1267,7 @@ glnvg__blendCompositeOperation :: (op: NVGcompositeOperationState) -> GLNVGblend
 glnvg__renderFlush :: (uptr: *void) {
     gl := cast(*GLNVGcontext) uptr;
 
-    if (gl.ncalls > 0) {
+    if (gl.calls.count > 0) {
         // Setup require GL state.
         glUseProgram(gl.shader.prog);
 
@@ -1318,8 +1325,7 @@ glnvg__renderFlush :: (uptr: *void) {
             glBindBuffer(GL_UNIFORM_BUFFER, gl.fragBuf);
         }
 
-        for i : 0..gl.ncalls-1 {
-            call := *gl.calls[i];
+        for * call : gl.calls {
             glnvg__blendFuncSeparate(gl, *call.blendFunc);
             if call.type == {
                 case .GLNVG_FILL;       glnvg__fill(gl, call);
@@ -1345,7 +1351,7 @@ glnvg__renderFlush :: (uptr: *void) {
     // Reset calls
     gl.nverts = 0;
     gl.npaths = 0;
-    gl.ncalls = 0;
+    clear(*gl.calls);
     gl.nuniforms = 0;
 }
 
@@ -1359,19 +1365,8 @@ glnvg__maxVertCount :: (paths: *NVGpath, npaths: s32) -> s32 {
 }
 
 glnvg__allocCall :: (gl: *GLNVGcontext) -> *GLNVGcall {
-    ret: *GLNVGcall = null;
-    if (gl.ncalls + 1 > gl.ccalls) {
-        ccalls := max(gl.ncalls + 1, 128) + gl.ccalls / 2; // 1.5x Overallocate
-        calls := realloc(gl.calls, ccalls);
-        if (calls == null) {
-            return null;
-        }
-        gl.calls = calls;
-        gl.ccalls = ccalls;
-    }
-    ret = *gl.calls[gl.ncalls];
+    ret := addNew(*gl.calls);
     memoryClear(ret);
-    gl.ncalls += 1;
     return ret;
 }
 
@@ -1435,6 +1430,14 @@ glnvg__vset :: (vtx: *NVGvertex, x: f32, y: f32, u: f32, v: f32) {
     vtx.v = v;
 }
 
+glnvg__rollbackLastCall :: (gl: *GLNVGcontext) {
+    // We get here if call alloc was ok, but something else is not.
+    // Roll back the last call to prevent drawing it.
+    if (gl.calls.count > 0) {
+        gl.calls.count -= 1;
+    }
+}
+
 glnvg__renderFill :: (uptr: *void, paint: *NVGpaint, compositeOperation: NVGcompositeOperationState, scissor: *NVGscissor,
                       fringe: f32, bounds: [] f32, paths: *NVGpath, npaths: s32)
 {
@@ -1449,11 +1452,7 @@ glnvg__renderFill :: (uptr: *void, paint: *NVGpaint, compositeOperation: NVGcomp
     call.triangleCount = 4;
     call.pathOffset = glnvg__allocPaths(gl, npaths);
     if (call.pathOffset == -1) {
-        // We get here if call alloc was ok, but something else is not.
-        // Roll back the last call to prevent drawing it.
-        if (gl.ncalls > 0) {
-            gl.ncalls -= 1;
-        }
+        glnvg__rollbackLastCall(gl);
         return;
     }
     call.pathCount = npaths;
@@ -1469,11 +1468,7 @@ glnvg__renderFill :: (uptr: *void, paint: *NVGpaint, compositeOperation: NVGcomp
     maxverts := glnvg__maxVertCount(paths, npaths) + call.triangleCount;
     offset := glnvg__allocVerts(gl, maxverts);
     if (offset == -1) {
-        // We get here if call alloc was ok, but something else is not.
-        // Roll back the last call to prevent drawing it.
-        if (gl.ncalls > 0) {
-            gl.ncalls -= 1;
-        }
+        glnvg__rollbackLastCall(gl);
         return;
     }
 
@@ -1508,11 +1503,7 @@ glnvg__renderFill :: (uptr: *void, paint: *NVGpaint, compositeOperation: NVGcomp
 
         call.uniformOffset = glnvg__allocFragUniforms(gl, 2);
         if (call.uniformOffset == -1) {
-            // We get here if call alloc was ok, but something else is not.
-            // Roll back the last call to prevent drawing it.
-            if (gl.ncalls > 0) {
-                gl.ncalls -= 1;
-            }
+            glnvg__rollbackLastCall(gl);
             return;
         }
         // Simple shader for stencil
@@ -1531,11 +1522,7 @@ glnvg__renderFill :: (uptr: *void, paint: *NVGpaint, compositeOperation: NVGcomp
     } else {
         call.uniformOffset = glnvg__allocFragUniforms(gl, 1);
         if (call.uniformOffset == -1) {
-            // We get here if call alloc was ok, but something else is not.
-            // Roll back the last call to prevent drawing it.
-            if (gl.ncalls > 0) {
-                gl.ncalls -= 1;
-            }
+            glnvg__rollbackLastCall(gl);
             return;
         }
         // Fill shader
@@ -1557,11 +1544,7 @@ glnvg__renderFillBatch :: (uptr: *void, paint: *NVGpaint, compositeOperation: NV
     call.triangleCount = 0;
     call.pathOffset = glnvg__allocPaths(gl, npaths);
     if (call.pathOffset == -1) {
-        // We get here if call alloc was ok, but something else is not.
-        // Roll back the last call to prevent drawing it.
-        if (gl.ncalls > 0) {
-            gl.ncalls -= 1;
-        }
+        glnvg__rollbackLastCall(gl);
         return;
     }
     call.pathCount = npaths;
@@ -1572,11 +1555,7 @@ glnvg__renderFillBatch :: (uptr: *void, paint: *NVGpaint, compositeOperation: NV
     maxverts := glnvg__maxVertCount(paths, npaths);
     offset := glnvg__allocVerts(gl, maxverts);
     if (offset == -1) {
-        // We get here if call alloc was ok, but something else is not.
-        // Roll back the last call to prevent drawing it.
-        if (gl.ncalls > 0) {
-            gl.ncalls -= 1;
-        }
+        glnvg__rollbackLastCall(gl);
         return;
     }
 
@@ -1613,11 +1592,7 @@ glnvg__renderFillBatch :: (uptr: *void, paint: *NVGpaint, compositeOperation: NV
 
         call.uniformOffset = glnvg__allocFragUniforms(gl, 2);
         if (call.uniformOffset == -1) {
-            // We get here if call alloc was ok, but something else is not.
-            // Roll back the last call to prevent drawing it.
-            if (gl.ncalls > 0) {
-                gl.ncalls -= 1;
-            }
+            glnvg__rollbackLastCall(gl);
             return;
         }
         // Simple shader for stencil
@@ -1636,11 +1611,7 @@ glnvg__renderFillBatch :: (uptr: *void, paint: *NVGpaint, compositeOperation: NV
     } else {
         call.uniformOffset = glnvg__allocFragUniforms(gl, 1);
         if (call.uniformOffset == -1) {
-            // We get here if call alloc was ok, but something else is not.
-            // Roll back the last call to prevent drawing it.
-            if (gl.ncalls > 0) {
-                gl.ncalls -= 1;
-            }
+            glnvg__rollbackLastCall(gl);
             return;
         }
         // Fill shader
@@ -1660,11 +1631,7 @@ glnvg__renderStroke :: (uptr: *void, paint: *NVGpaint, compositeOperation: NVGco
     call.type = .GLNVG_STROKE;
     call.pathOffset = glnvg__allocPaths(gl, npaths);
     if (call.pathOffset == -1) {
-        // We get here if call alloc was ok, but something else is not.
-        // Roll back the last call to prevent drawing it.
-        if (gl.ncalls > 0) {
-            gl.ncalls -= 1;
-        }
+        glnvg__rollbackLastCall(gl);
         return;
     }
     call.pathCount = npaths;
@@ -1675,11 +1642,7 @@ glnvg__renderStroke :: (uptr: *void, paint: *NVGpaint, compositeOperation: NVGco
     maxverts := glnvg__maxVertCount(paths, npaths);
     offset := glnvg__allocVerts(gl, maxverts);
     if (offset == -1) {
-        // We get here if call alloc was ok, but something else is not.
-        // Roll back the last call to prevent drawing it.
-        if (gl.ncalls > 0) {
-            gl.ncalls -= 1;
-        }
+        glnvg__rollbackLastCall(gl);
         return;
     }
 
@@ -1699,11 +1662,7 @@ glnvg__renderStroke :: (uptr: *void, paint: *NVGpaint, compositeOperation: NVGco
         // Fill shader
         call.uniformOffset = glnvg__allocFragUniforms(gl, 2);
         if (call.uniformOffset == -1) {
-            // We get here if call alloc was ok, but something else is not.
-            // Roll back the last call to prevent drawing it.
-            if (gl.ncalls > 0) {
-                gl.ncalls -= 1;
-            }
+            glnvg__rollbackLastCall(gl);
             return;
         }
 
@@ -1714,11 +1673,7 @@ glnvg__renderStroke :: (uptr: *void, paint: *NVGpaint, compositeOperation: NVGco
         // Fill shader
         call.uniformOffset = glnvg__allocFragUniforms(gl, 1);
         if (call.uniformOffset == -1) {
-            // We get here if call alloc was ok, but something else is not.
-            // Roll back the last call to prevent drawing it.
-            if (gl.ncalls > 0) {
-                gl.ncalls -= 1;
-            }
+            glnvg__rollbackLastCall(gl);
             return;
         }
         glnvg__convertPaint(gl, nvg__fragUniformPtr(gl, call.uniformOffset), paint, scissor, strokeWidth, fringe, -1.0);
@@ -1741,11 +1696,7 @@ glnvg__renderTriangles :: (uptr: *void, paint: *NVGpaint, compositeOperation: NV
     // Allocate vertices for all the paths.
     call.triangleOffset = glnvg__allocVerts(gl, nverts);
     if (call.triangleOffset == -1) {
-        // We get here if call alloc was ok, but something else is not.
-        // Roll back the last call to prevent drawing it.
-        if (gl.ncalls > 0) {
-            gl.ncalls -= 1;
-        }
+        glnvg__rollbackLastCall(gl);
         return;
     }
     call.triangleCount = nverts;
@@ -1755,11 +1706,7 @@ glnvg__renderTriangles :: (uptr: *void, paint: *NVGpaint, compositeOperation: NV
     // Fill shader
     call.uniformOffset = glnvg__allocFragUniforms(gl, 1);
     if (call.uniformOffset == -1) {
-        // We get here if call alloc was ok, but something else is not.
-        // Roll back the last call to prevent drawing it.
-        if (gl.ncalls > 0) {
-            gl.ncalls -= 1;
-        }
+        glnvg__rollbackLastCall(gl);
         return;
     }
     frag := nvg__fragUniformPtr(gl, call.uniformOffset);
@@ -1806,7 +1753,7 @@ glnvg__renderDelete :: (uptr: *void) {
     free(gl.paths);
     free(gl.verts);
     free(gl.uniforms);
-    free(gl.calls);
+    uninit(*gl.calls);
 
     free(gl);
 }
