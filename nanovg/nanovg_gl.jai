@@ -251,9 +251,7 @@ GLNVGcontext :: struct {
 
     // Per frame buffers
     calls: List(GLNVGcall);
-    paths: *GLNVGpath;
-    cpaths: s32;
-    npaths: s32;
+    paths: List(GLNVGpath);
     verts: *NVGvertex;
     cverts: s32;
     nverts: s32;
@@ -295,6 +293,13 @@ nvg__createGL :: (flags: NVGcreateFlags) -> *NVGcontext {
         return null;
     }
 
+    gl.paths = createList(GLNVGpath, ListOptions(GLNVGpath).{
+        capacity = 128
+    });
+    if (gl.paths.items == null) {
+        return null;
+    }
+
     params: NVGparams;
     params.renderCreate = glnvg__renderCreate;
     params.renderCreateTexture = glnvg__renderCreateTexture;
@@ -305,7 +310,6 @@ nvg__createGL :: (flags: NVGcreateFlags) -> *NVGcontext {
     params.renderCancel = glnvg__renderCancel;
     params.renderFlush = glnvg__renderFlush;
     params.renderFill = glnvg__renderFill;
-    params.renderFillBatch = glnvg__renderFillBatch;
     params.renderStroke = glnvg__renderStroke;
     params.renderTriangles = glnvg__renderTriangles;
     params.renderDelete = glnvg__renderDelete;
@@ -1105,7 +1109,7 @@ glnvg__renderViewport :: (uptr: *void, width: f32, height: f32, devicePixelRatio
 }
 
 glnvg__fill :: (gl: *GLNVGcontext, call: *GLNVGcall) {
-    paths := *gl.paths[call.pathOffset];
+    paths := ref(*gl.paths, call.pathOffset);
     npaths := call.pathCount;
 
     // Draw shapes
@@ -1150,7 +1154,7 @@ glnvg__fill :: (gl: *GLNVGcontext, call: *GLNVGcall) {
 }
 
 glnvg__convexFill :: (gl: *GLNVGcontext, call: *GLNVGcall) {
-    paths := *gl.paths[call.pathOffset];
+    paths := ref(*gl.paths, call.pathOffset);
     npaths := call.pathCount;
 
     glnvg__setUniforms(gl, call.uniformOffset, call.image);
@@ -1166,7 +1170,7 @@ glnvg__convexFill :: (gl: *GLNVGcontext, call: *GLNVGcall) {
 }
 
 glnvg__stroke :: (gl: *GLNVGcontext, call: *GLNVGcall) {
-    paths := *gl.paths[call.pathOffset];
+    paths := ref(*gl.paths, call.pathOffset);
     npaths := call.pathCount;
 
     if (gl.flags & .NVG_STENCIL_STROKES) {
@@ -1223,7 +1227,7 @@ glnvg__triangles :: (gl: *GLNVGcontext, call: *GLNVGcall) {
 glnvg__renderCancel :: (uptr: *void) {
     gl := cast(*GLNVGcontext) uptr;
     gl.nverts = 0;
-    gl.npaths = 0;
+    clear(*gl.paths);
     clear(*gl.calls);
     gl.nuniforms = 0;
 }
@@ -1350,7 +1354,7 @@ glnvg__renderFlush :: (uptr: *void) {
 
     // Reset calls
     gl.nverts = 0;
-    gl.npaths = 0;
+    clear(*gl.paths);
     clear(*gl.calls);
     gl.nuniforms = 0;
 }
@@ -1371,19 +1375,8 @@ glnvg__allocCall :: (gl: *GLNVGcontext) -> *GLNVGcall {
 }
 
 glnvg__allocPaths :: (gl: *GLNVGcontext, n: s32) -> s32 {
-    ret: s32 = 0;
-    if (gl.npaths + n > gl.cpaths) {
-        cpaths := max(gl.npaths + n, 128) + gl.cpaths / 2; // 1.5x Overallocate
-        paths := realloc(gl.paths, cpaths);
-        if (paths == null) {
-            return -1;
-        }
-        gl.paths = paths;
-        gl.cpaths = cpaths;
-    }
-    ret = gl.npaths;
-    gl.npaths += n;
-    return ret;
+    ensureCapacity(*gl.paths, gl.paths.count + n);
+    return cast(s32) gl.paths.count;
 }
 
 glnvg__allocVerts :: (gl: *GLNVGcontext, n: s32) -> s32 {
@@ -1465,15 +1458,15 @@ glnvg__renderFill :: (uptr: *void, paint: *NVGpaint, compositeOperation: NVGcomp
     }
 
     // Allocate vertices for all the paths.
-    maxverts := glnvg__maxVertCount(paths, npaths) + call.triangleCount;
-    offset := glnvg__allocVerts(gl, maxverts);
+    nverts := glnvg__maxVertCount(paths, npaths) + call.triangleCount;
+    offset := glnvg__allocVerts(gl, nverts);
     if (offset == -1) {
         glnvg__rollbackLastCall(gl);
         return;
     }
 
     for i : 0..npaths-1 {
-        copy := *gl.paths[call.pathOffset + i];
+        copy := addNew(*gl.paths);
         memoryClear(copy);
 
         path := *paths[i];
@@ -1493,95 +1486,6 @@ glnvg__renderFill :: (uptr: *void, paint: *NVGpaint, compositeOperation: NVGcomp
 
     // Setup uniforms for draw calls
     if (call.type == .GLNVG_FILL) {
-        // Quad
-        call.triangleOffset = offset;
-        quad := *gl.verts[call.triangleOffset];
-        glnvg__vset(*quad[0], bounds[2], bounds[3], 0.5, 1.0);
-        glnvg__vset(*quad[1], bounds[2], bounds[1], 0.5, 1.0);
-        glnvg__vset(*quad[2], bounds[0], bounds[3], 0.5, 1.0);
-        glnvg__vset(*quad[3], bounds[0], bounds[1], 0.5, 1.0);
-
-        call.uniformOffset = glnvg__allocFragUniforms(gl, 2);
-        if (call.uniformOffset == -1) {
-            glnvg__rollbackLastCall(gl);
-            return;
-        }
-        // Simple shader for stencil
-        frag := nvg__fragUniformPtr(gl, call.uniformOffset);
-        memoryClear(frag);
-        frag.strokeThr = -1.0;
-
-        #if NANOVG_GL_USE_UNIFORMBUFFER {
-            frag.type = .NSVG_SHADER_SIMPLE;
-        } else {
-            frag.type = cast(f32) GLNVGshaderType.NSVG_SHADER_SIMPLE;
-        }
-
-        // Fill shader
-        glnvg__convertPaint(gl, nvg__fragUniformPtr(gl, call.uniformOffset + gl.fragSize), paint, scissor, fringe, fringe, -1.0);
-    } else {
-        call.uniformOffset = glnvg__allocFragUniforms(gl, 1);
-        if (call.uniformOffset == -1) {
-            glnvg__rollbackLastCall(gl);
-            return;
-        }
-        // Fill shader
-        glnvg__convertPaint(gl, nvg__fragUniformPtr(gl, call.uniformOffset), paint, scissor, fringe, fringe, -1.0);
-    }
-}
-
-glnvg__renderFillBatch :: (uptr: *void, paint: *NVGpaint, compositeOperation: NVGcompositeOperationState, scissor: *NVGscissor,
-                           fringe: f32, bounds: [] f32, paths: *NVGpath, npaths: s32)
-{
-    gl := cast(*GLNVGcontext) uptr;
-
-    call := glnvg__allocCall(gl);
-    if (call == null) {
-        return;
-    }
-
-    call.type = .GLNVG_TRIANGLES;
-    call.triangleCount = 0;
-    call.pathOffset = glnvg__allocPaths(gl, npaths);
-    if (call.pathOffset == -1) {
-        glnvg__rollbackLastCall(gl);
-        return;
-    }
-    call.pathCount = npaths;
-    call.image = paint.image;
-    call.blendFunc = glnvg__blendCompositeOperation(compositeOperation);
-
-    // Allocate vertices for all the paths.
-    maxverts := glnvg__maxVertCount(paths, npaths);
-    offset := glnvg__allocVerts(gl, maxverts);
-    if (offset == -1) {
-        glnvg__rollbackLastCall(gl);
-        return;
-    }
-
-    call.triangleCount = maxverts;
-
-    for i : 0..npaths-1 {
-        copy := *gl.paths[call.pathOffset + i];
-        memoryClear(copy);
-
-        path := *paths[i];
-        if (path.nfill > 0) {
-            copy.fillOffset = offset;
-            copy.fillCount = path.nfill;
-            memoryCopy(*gl.verts[offset], path.fill, path.nfill);
-            offset += path.nfill;
-        }
-        if (path.nstroke > 0) {
-            copy.strokeOffset = offset;
-            copy.strokeCount = path.nstroke;
-            memoryCopy(*gl.verts[offset], path.stroke, path.nstroke);
-            offset += path.nstroke;
-        }
-    }
-
-    // Setup uniforms for draw calls
-    if (false /* call.type == .GLNVG_TRIANGLES */) {
         // Quad
         call.triangleOffset = offset;
         quad := *gl.verts[call.triangleOffset];
@@ -1639,17 +1543,18 @@ glnvg__renderStroke :: (uptr: *void, paint: *NVGpaint, compositeOperation: NVGco
     call.blendFunc = glnvg__blendCompositeOperation(compositeOperation);
 
     // Allocate vertices for all the paths.
-    maxverts := glnvg__maxVertCount(paths, npaths);
-    offset := glnvg__allocVerts(gl, maxverts);
+    nverts := glnvg__maxVertCount(paths, npaths);
+    offset := glnvg__allocVerts(gl, nverts);
     if (offset == -1) {
         glnvg__rollbackLastCall(gl);
         return;
     }
 
     for i : 0..npaths-1 {
-        copy := *gl.paths[call.pathOffset + i];
-        path := *paths[i];
+        copy := addNew(*gl.paths);
         memoryClear(copy);
+
+        path := *paths[i];
         if (path.nstroke) {
             copy.strokeOffset = offset;
             copy.strokeCount = path.nstroke;
@@ -1750,7 +1655,7 @@ glnvg__renderDelete :: (uptr: *void) {
 
     uninit(*gl.textures);
 
-    free(gl.paths);
+    uninit(*gl.paths);
     free(gl.verts);
     free(gl.uniforms);
     uninit(*gl.calls);

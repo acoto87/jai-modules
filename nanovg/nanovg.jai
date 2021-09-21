@@ -1278,33 +1278,6 @@ nvgFill :: (ctx: *NVGcontext) {
     }
 }
 
-nvgFillBatch :: (ctx: *NVGcontext) {
-    state := nvg__getState(ctx);
-
-    nvg__flattenPaths(ctx);
-
-    if (ctx.params.edgeAntiAlias && state.shapeAntiAlias) {
-        nvg__expandFill(ctx, ctx.fringeWidth, .NVG_MITER, 2.4);
-    } else {
-        nvg__expandFill(ctx, 0.0, .NVG_MITER, 2.4);
-    }
-
-    // Apply global alpha
-    fillPaint := state.fill;
-    fillPaint.innerColor.a *= state.alpha;
-    fillPaint.outerColor.a *= state.alpha;
-
-    ctx.params.renderFillBatch(ctx.params.userPtr, *fillPaint, state.compositeOperation, *state.scissor, ctx.fringeWidth,
-                               ctx.cache.bounds, ctx.cache.paths.items, cast(s32) ctx.cache.paths.count);
-
-    // Count triangles
-    for * path : ctx.cache.paths {
-        ctx.fillTriCount += path.nfill / 3;
-        ctx.fillTriCount += path.nstroke / 3;
-    }
-    ctx.drawCallCount += 1;
-}
-
 // Fills the current path with current stroke style.
 nvgStroke :: (ctx: *NVGcontext) {
     state := nvg__getState(ctx);
@@ -2047,7 +2020,6 @@ NVGparams :: struct {
     renderCancel: (uptr: *void);
     renderFlush: (uptr: *void);
     renderFill: (uptr: *void, paint: *NVGpaint, compositeOperation: NVGcompositeOperationState, scissor: *NVGscissor, fringe: f32, bounds: [] f32, paths: *NVGpath, npaths: s32);
-    renderFillBatch: (uptr: *void, paint: *NVGpaint, compositeOperation: NVGcompositeOperationState, scissor: *NVGscissor, fringe: f32, bounds: [] f32, paths: *NVGpath, npaths: s32);
     renderStroke: (uptr: *void, paint: *NVGpaint, compositeOperation: NVGcompositeOperationState, scissor: *NVGscissor, fringe: f32, strokeWidth: f32, paths: *NVGpath, npaths: s32);
     renderTriangles: (uptr: *void, paint: *NVGpaint, compositeOperation: NVGcompositeOperationState, scissor: *NVGscissor, verts: *NVGvertex, nverts: s32);
     renderDelete: (uptr: *void);
