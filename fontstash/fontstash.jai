@@ -862,6 +862,7 @@ fonsDrawDebug :: (stash: *FONScontext, x: f32, y: f32) {
 #scope_file
 
 #import "utils";
+#import "strings";
 #import "stb_truetype";
 
 utf8d: [] u8 = .[

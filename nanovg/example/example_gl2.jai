@@ -3,6 +3,7 @@
 #import "nanovg";
 
 #import "collections";
+#import "strings";
 #import "utils";
 
 #load "demo.jai";
@@ -22,22 +23,22 @@ errorCallback :: (error: s32, description: *u8) #c_call {
 }
 
 keyCallback :: (window: *GLFWwindow, key: s32, scancode: s32, action: s32, mods: s32) #c_call {
-	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
-		glfwSetWindowShouldClose(window, 1);
+    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+        glfwSetWindowShouldClose(window, 1);
     }
-	if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
-		blowup = !blowup;
+    if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
+        blowup = !blowup;
     }
-	if (key == GLFW_KEY_S && action == GLFW_PRESS) {
-		screenshot = 1;
+    if (key == GLFW_KEY_S && action == GLFW_PRESS) {
+        screenshot = 1;
     }
-	if (key == GLFW_KEY_P && action == GLFW_PRESS) {
-		premult = !premult;
+    if (key == GLFW_KEY_P && action == GLFW_PRESS) {
+        premult = !premult;
     }
 }
 
 main :: () {
-    randomSeed(time(null));
+    randomSeed(cast(u64) time(null), cast(u64) time(null));
 
     glfwSetErrorCallback(errorCallback);
 
@@ -49,13 +50,13 @@ main :: () {
     // initGraph(*fps, GRAPH_RENDER_FPS, "Frame Time");
 
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 
     window := glfwCreateWindow(1000, 600, "NanoVG", null, null);
-	if (!window) {
-		glfwTerminate();
-		exit(EXIT_FAILURE);
-	}
+    if (!window) {
+        glfwTerminate();
+        exit(EXIT_FAILURE);
+    }
 
     glfwMakeContextCurrent(window);
 
@@ -63,74 +64,74 @@ main :: () {
 
     glCheckOpenGLVersion();
 
-	glfwSetKeyCallback(window, keyCallback);
+    glfwSetKeyCallback(window, keyCallback);
 
     //vg := nvgCreateGLES2(NVGcreateFlags.NVG_ANTIALIAS | .NVG_STENCIL_STROKES | .NVG_DEBUG);
     vg := nvgCreateGL2(NVGcreateFlags.NVG_ANTIALIAS | .NVG_STENCIL_STROKES | NVGcreateFlags.NVG_DEBUG);
-	if (vg == null) {
-		print("Could not init nanovg.\n");
-		exit(EXIT_FAILURE);
-	}
+    if (vg == null) {
+        print("Could not init nanovg.\n");
+        exit(EXIT_FAILURE);
+    }
 
     data: DemoData;
     if (loadDemoData(vg, *data) == -1) {
-		exit(EXIT_FAILURE);
+        exit(EXIT_FAILURE);
     }
 
     glfwSwapInterval(0);
 
     glfwSetTime(0);
-	prevt := glfwGetTime();
+    prevt := glfwGetTime();
 
     while (!glfwWindowShouldClose(window)) {
         t := glfwGetTime();
         dt := t - prevt;
-		prevt = t;
-		// updateGraph(*fps, dt);
+        prevt = t;
+        // updateGraph(*fps, dt);
 
         mx, my: f64;
         glfwGetCursorPos(window, *mx, *my);
 
         winWidth, winHeight: s32;
-		glfwGetWindowSize(window, *winWidth, *winHeight);
+        glfwGetWindowSize(window, *winWidth, *winHeight);
 
         fbWidth, fbHeight: s32;
-		glfwGetFramebufferSize(window, *fbWidth, *fbHeight);
+        glfwGetFramebufferSize(window, *fbWidth, *fbHeight);
 
-		pxRatio := cast(f32)fbWidth / cast(f32)winWidth;
+        pxRatio := cast(f32)fbWidth / cast(f32)winWidth;
 
         glViewport(0, 0, cast(u32)fbWidth, cast(u32)fbHeight);
 
         if (premult) {
-			glClearColor(0,0,0,0);
+            glClearColor(0,0,0,0);
         } else {
-			glClearColor(0.3, 0.3, 0.32, 1.0);
+            glClearColor(0.3, 0.3, 0.32, 1.0);
         }
 
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
         glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		glEnable(GL_CULL_FACE);
-		glDisable(GL_DEPTH_TEST);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glEnable(GL_CULL_FACE);
+        glDisable(GL_DEPTH_TEST);
 
-		nvgBeginFrame(vg, cast(f32)winWidth, cast(f32)winHeight, pxRatio);
+        nvgBeginFrame(vg, cast(f32)winWidth, cast(f32)winHeight, pxRatio);
 
         renderDemo(vg, cast(f32)mx, cast(f32)my, cast(f32)winWidth, cast(f32)winHeight, cast(f32)t, blowup, *data);
-		// renderGraph(vg, 5,5, &fps);
+        // renderGraph(vg, 5,5, &fps);
 
         //drawSpinner(vg, 200, 200, 100, 0);
 
-		nvgEndFrame(vg);
+        nvgEndFrame(vg);
 
         glEnable(GL_DEPTH_TEST);
 
-		glfwSwapBuffers(window);
-		glfwPollEvents();
+        glfwSwapBuffers(window);
+        glfwPollEvents();
     }
 
-	freeDemoData(vg, *data);
-	nvgDeleteGL2(vg);
+    freeDemoData(vg, *data);
+    nvgDeleteGL2(vg);
     glfwDestroyWindow(window);
     glfwTerminate();
 

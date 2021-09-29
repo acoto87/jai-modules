@@ -104,9 +104,6 @@ drawSearchBox :: (vg: *NVGcontext, text: *u8, x: f32, y: f32, w: f32, h: f32) {
     nvgStroke(vg);*/
 
     s := cpToUTF8(ICON_SEARCH,icon.data);
-    for k : 0..strlen(s)-1 {
-        print("% = %\n", k, s[k]);
-    }
 
     nvgFontSize(vg, h * 1.3);
     nvgFontFace(vg, "icons");
@@ -782,16 +779,10 @@ drawParagraph :: (vg: *NVGcontext, x: f32, y: f32, width: f32, height: f32, mx: 
     start = text;
     end = text + strlen(text);
 
-    print("x = %\n", x);
-    print("y = %\n", y);
-
     nrows = nvgTextBreakLines(vg, start, end, width, rows, 3);
     while (nrows > 0) {
         for i : 0..nrows-1 {
             row := *rows[i];
-
-            print("row.minx = %\n", row.minx);
-            print("row.maxx = %\n", row.maxx);
 
             hit := mx > x && mx < (x+width) && my >= y && my < (y+lineh);
 
@@ -985,7 +976,7 @@ loadDemoData :: (vg: *NVGcontext, data: *DemoData) -> s32 {
     }
 
     for i : 0..12-1 {
-        file := sprint("../images/image%.jpg", i + 1);
+        file := sprint("image%.jpg", i + 1);
         defer free(file);
 
         cfile := toCString(file);
@@ -998,22 +989,22 @@ loadDemoData :: (vg: *NVGcontext, data: *DemoData) -> s32 {
         }
     }
 
-    data.fontIcons = nvgCreateFont(vg, "icons", "../entypo.ttf");
+    data.fontIcons = nvgCreateFont(vg, "icons", "entypo.ttf");
     if (data.fontIcons == -1) {
         print("Could not add font icons.\n");
         return -1;
     }
-    data.fontNormal = nvgCreateFont(vg, "sans", "../Roboto-Regular.ttf");
+    data.fontNormal = nvgCreateFont(vg, "sans", "Roboto-Regular.ttf");
     if (data.fontNormal == -1) {
         print("Could not add font italic.\n");
         return -1;
     }
-    data.fontBold = nvgCreateFont(vg, "sans-bold", "../Roboto-Bold.ttf");
+    data.fontBold = nvgCreateFont(vg, "sans-bold", "Roboto-Bold.ttf");
     if (data.fontBold == -1) {
         print("Could not add font bold.\n");
         return -1;
     }
-    data.fontEmoji = nvgCreateFont(vg, "emoji", "../NotoEmoji-Regular.ttf");
+    data.fontEmoji = nvgCreateFont(vg, "emoji", "NotoEmoji-Regular.ttf");
     if (data.fontEmoji == -1) {
         print("Could not add font emoji.\n");
         return -1;
