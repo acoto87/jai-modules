@@ -1,5 +1,3 @@
-EPSILON_FOR_EQUALITY :: 0.0001;
-
 Vec2 :: struct {
     x, y: f32;
 }
@@ -11,7 +9,7 @@ VEC2_UP     :: Vec2.{ x = 0.0, y = -1.0 };
 VEC2_RIGHT  :: Vec2.{ x = 1.0, y = 0.0 };
 VEC2_DOWN   :: Vec2.{ x = 0.0, y = 1.0 };
 
-EPSILON     : f32 : 0.0001;
+EPSILON     : f32 : 1.0e-6;
 
 vec2 :: inline (x: f32, y: f32) -> Vec2 {
     r: Vec2 = ---;
@@ -33,9 +31,8 @@ vec2Random :: inline () -> Vec2 {
     return vec2(cosf(angle), sinf(angle));
 }
 
-equals :: inline (v1: Vec2, v2: Vec2) -> bool {
-    d := distance(v1, v2);
-    return nearlyEquals(d, 0, EPSILON_FOR_EQUALITY);
+equals :: inline (v1: Vec2, v2: Vec2, epsilon: f32 = EPSILON) -> bool {
+    return distanceSqr(v1, v2) < epsilon * epsilon;
 }
 
 isZero :: inline (v: Vec2) -> bool {
@@ -84,14 +81,21 @@ distanceManhattan :: inline (v1: Vec2, v2: Vec2) -> s32 {
     return cast(s32) abs(dx) + cast(s32) abs(dy);
 }
 
-normalize :: inline (v: Vec2) -> Vec2 {
+normalize :: inline (v: Vec2) -> Vec2, f32 {
     len := length(v);
-    if len == 0 then return vec2(0, 0);
-    return v / len;
+    if (len > EPSILON) {
+        div := 1.0 / len;
+        return v * div, len;
+    }
+    return VEC2_ZERO, len;
 }
 
 dot :: inline (v1: Vec2, v2: Vec2) -> f32 {
     return v1.x * v2.x + v1.y * v2.y;
+}
+
+cross :: inline (v1: Vec2, v2: Vec2) -> f32 {
+    return v1.x * v2.y - v2.x * v1.y;
 }
 
 angleBetween :: inline (v1: Vec2, v2: Vec2) -> f32 {
@@ -104,6 +108,14 @@ angleClockwise :: inline (v1: Vec2, v2: Vec2) -> f32 {
     dot1 := dot(v1, v2);
     det := v1.x * v2.y - v1.y * v2.x;
     return atan2f(det, dot1);
+}
+
+perpendicularCW :: inline (v: Vec2) -> Vec2 {
+    return vec2(v.y, -v.x);
+}
+
+perpendicularCCW :: inline (v: Vec2) -> Vec2 {
+    return vec2(-v.y, v.x);
 }
 
 operator == :: (v1: Vec2, v2: Vec2) -> bool {

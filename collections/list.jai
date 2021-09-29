@@ -96,6 +96,14 @@ addRange :: inline (list: *$T/List, items: ..T.TItem) {
     insertRange(list, list.count, ..items);
 }
 
+addRange :: inline (list: *$T/List, other: *List(T.TItem)) {
+    insertRange(list, list.count, other);
+}
+
+addRange :: inline (list: *$T/List, items: *T.TItem, count: s64) {
+    insertRange(list, list.count, items, count);
+}
+
 insert :: (list: *$T/List, index: s64, item: T.TItem) {
     assert(list.items != null);
     assert(index >= 0 && index <= list.count);
@@ -130,42 +138,30 @@ insertNew :: (list: *$T/List, index: s64) -> *T.TItem {
     return *list.items[index];
 }
 
-insertRange :: (list: *$T/List, index: s64, items: ..T.TItem) {
-    assert(list.items != null);
-    assert(index >= 0 && index <= list.count);
-
-    if (items.count == 0) {
-        return;
-    }
-
-    newCount := list.count + items.count;
-
-    if (newCount > list.capacity) {
-        resize(list, newCount);
-    }
-
-    memoryMove(list.items + index + items.count, list.items + index, list.count - index);
-    memoryCopy(list.items + index, items.data, items.count);
-
-    list.count = newCount;
+insertRange :: inline (list: *$T/List, index: s64, items: ..T.TItem) {
+    insertRange(list, index, items.data, items.count);
 }
 
-insertRange :: (list: *$T/List, index: s64, other: List(T.TItem)) {
+insertRange :: inline (list: *$T/List, index: s64, other: *List(T.TItem)) {
+    insertRange(list, index, other.items, other.count);
+}
+
+insertRange :: (list: *$T/List, index: s64, items: *T.TItem, count: s64) {
     assert(list.items != null);
     assert(index >= 0 && index <= list.count);
 
-    if (other.count == 0) {
+    if (count == 0) {
         return;
     }
 
-    newCount := list.count + other.count;
+    newCount := list.count + count;
 
     if (newCount > list.capacity) {
         resize(list, newCount);
     }
 
-    memoryMove(list.items + index + other.count, list.items + index, list.count - index);
-    memoryCopy(list.items + index, other.items, other.count);
+    memoryMove(list.items + index + count, list.items + index, list.count - index);
+    memoryCopy(list.items + index, items, count);
 
     list.count = newCount;
 }
@@ -327,16 +323,22 @@ for_expansion :: (list: *$T/List, body: Code, flags: For_Flags) #expand {
     }
 }
 
+ensureCapacity :: inline (list: *$T/List, capacity: s64) {
+    if (capacity > list.capacity) {
+        resize(list, capacity);
+    }
+}
+
 #scope_file
 
 #import "utils";
 
-resize :: (list: *$T/List, minSize: s64) {
+resize :: (list: *$T/List, minCapacity: s64) {
     oldCapacity := list.capacity;
 
     list.capacity = oldCapacity * 2;
-    if (list.capacity < minSize) {
-        list.capacity = minSize;
+    if (list.capacity < minCapacity) {
+        list.capacity = minCapacity;
     }
 
     list.items = realloc(list.items, list.capacity, oldCapacity, list.allocator);

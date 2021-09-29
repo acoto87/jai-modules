@@ -53,7 +53,13 @@ NANOVG_GL_USE_STATE_FILTER :: useStateFilter;
 NVG_DISABLE_CULL_FACE :: disableCullFace;
 
 #load "nanovg.jai";
+#load "nanovg_ext.jai";
 
 #if NANOVG_GL {
     #load "nanovg_gl.jai";
 }
+
+#scope_module
+
+#import "collections";
+#import "utils";
