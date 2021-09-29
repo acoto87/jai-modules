@@ -1,9 +1,11 @@
 .build/
 build/
-flecs-jai/examples/*/flecs.dll
-flecs-jai/examples/*/flecs.ilk
-flecs-jai/examples/*/flecs.lib
-flecs-jai/examples/*/flecs.pdb
-flecs-jai/examples/*/main.exe
-flecs-jai/examples/*/main.pdb
+flecs-jai/examples/*/*.dll
+flecs-jai/examples/*/*.ilk
+flecs-jai/examples/*/*.lib
+flecs-jai/examples/*/*.pdb
+flecs-jai/examples/*/*.exe
 flecs-jai/examples/*/.vs
+raylib/examples/*/*.exe
+raylib/examples/*/*.pdb
+raylib/examples/*/*.dll

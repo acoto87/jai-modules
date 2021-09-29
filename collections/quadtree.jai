@@ -108,6 +108,8 @@ query :: (tree: *QuadTree, range: Circle, results: *List(QuadTreeEntry)) {
 
 #scope_file
 
+#import "math-jai";
+
 subdivide :: (tree: *QuadTree) {
     childrenBoundarySize := getSize(tree.boundary) / 2;
 

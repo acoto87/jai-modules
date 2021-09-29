@@ -88,6 +88,8 @@ randomNext01 :: (rng: *PCG32Random) -> f32 {
 
 #scope_file
 
+#import "math-jai";
+
 globalRng := PCG32Random.{
     state = 0,
     inc = 0

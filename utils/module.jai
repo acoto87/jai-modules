@@ -24,12 +24,6 @@
 f32 :: float32;
 f64 :: float64;
 
-#load "math.jai";
-#load "math.vec2.jai";
-#load "math.vec2i.jai";
-#load "math.rect.jai";
-#load "math.recti.jai";
-#load "math.circle.jai";
 #load "color.jai";
 #load "memory.jai";
 #load "memory_buffer.jai";
@@ -112,6 +106,9 @@ exit :: Basic.exit;
 resetTemporaryStorage :: Basic.reset_temporary_storage;
 
 setWorkingDirectory :: Basic.set_working_directory;
+getWorkingDirectory :: Basic.get_working_directory;
+
+arrayAdd :: Basic.array_add;
 
 glCheckOpenGLVersion :: () {
     vendor := glGetString(GL_VENDOR);
