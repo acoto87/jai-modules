@@ -5,7 +5,7 @@
 
 rl :: #import "raylib";
 
-NUMBER_OF_BOIDS :: 1000;
+NUMBER_OF_BOIDS :: 2000;
 BOID_WIDTH :: 7;
 BOID_HEIGHT :: 9;
 BOID_MAX_SPEED :: 6.0;
@@ -19,7 +19,7 @@ BOUNDS_MARGIN :: 0;
 BOUNDS_STEERING_FACTOR :: 0.7;
 RENDER_QUADTREE :: false;
 RENDER_PERCEPTION :: false;
-RENDER_TRAILS :: true;
+RENDER_TRAILS :: false;
 
 Flock :: struct {
     boids: *List(*Boid);
@@ -45,10 +45,9 @@ main :: () {
 
     initGame("Boids", screenWidth, screenHeight);
 
-    rl.SetTargetFPS(60);
+    // rl.SetTargetFPS(60);
 
-    while (!rl.WindowShouldClose())
-    {
+    while (!rl.WindowShouldClose()) {
         updateGame();
         renderGame();
     }
@@ -160,7 +159,7 @@ initBoid :: (boid: *Boid, position: Vec2, velocity: Vec2) {
     boid.id = boidStaticId;
     boid.position = position;
     boid.velocity = velocity;
-    boid.color = getColorFromList(boid.id);
+    boid.color = fromColorList(boid.id);
     #if (RENDER_TRAILS) {
         boid.trail = createList(Vec2, ListOptions(Vec2).{
             capacity = BOID_TRAIL_LENGTH

@@ -49,7 +49,7 @@ fromNamedColor :: inline (namedColor: NamedColor) -> Color {
     return fromRgbInt(cast(s32) namedColor);
 }
 
-getColorFromList :: (index: s64) -> Color {
+fromColorList :: (index: s64) -> Color {
     rgb := colors[index % colors.count];
     return fromRgbInt(rgb);
 }
