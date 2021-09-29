@@ -3,6 +3,7 @@
 #import "nanovg";
 
 #import "collections";
+#import "strings";
 #import "utils";
 
 #load "demo.jai";
@@ -37,7 +38,7 @@ keyCallback :: (window: *GLFWwindow, key: s32, scancode: s32, action: s32, mods:
 }
 
 main :: () {
-    randomSeed(time(null));
+    randomSeed(cast(u64) time(null), cast(u64) time(null));
 
     glfwSetErrorCallback(errorCallback);
 

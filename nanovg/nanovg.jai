@@ -1268,7 +1268,7 @@ nvgFill :: (ctx: *NVGcontext) {
     fillPaint.outerColor.a *= state.alpha;
 
     ctx.params.renderFill(ctx.params.userPtr, *fillPaint, state.compositeOperation, *state.scissor, ctx.fringeWidth,
-                          ctx.cache.bounds, ctx.cache.paths.items, cast(s32) ctx.cache.paths.count);
+                          ctx.cache.bounds, *ctx.cache.paths);
 
     // Count triangles
     for * path : ctx.cache.paths {
@@ -1308,7 +1308,7 @@ nvgStroke :: (ctx: *NVGcontext) {
     }
 
     ctx.params.renderStroke(ctx.params.userPtr, *strokePaint, state.compositeOperation, *state.scissor, ctx.fringeWidth,
-                            strokeWidth, ctx.cache.paths.items, cast(s32) ctx.cache.paths.count);
+                            strokeWidth, *ctx.cache.paths);
 
     // Count triangles
     for * path : ctx.cache.paths {
@@ -1470,7 +1470,7 @@ nvgText :: (ctx: *NVGcontext, x: f32, y: f32, str: *u8, end: *u8) -> f32 {
     while (fonsTextIterNext(ctx.fs, *iter, *q)) {
         if (iter.prevGlyphIndex == -1) { // can not retrieve glyph?
             if (verts.count != 0) {
-                nvg__renderText(ctx, verts.items, cast(s32) verts.count);
+                nvg__renderText(ctx, verts);
                 clear(verts);
             }
             if (!nvg__allocTextAtlas(ctx)) {
@@ -1519,7 +1519,7 @@ nvgText :: (ctx: *NVGcontext, x: f32, y: f32, str: *u8, end: *u8) -> f32 {
     // TODO: add back-end bit to do this just once per frame.
     nvg__flushTextTexture(ctx);
 
-    nvg__renderText(ctx, verts.items, cast(s32) verts.count);
+    nvg__renderText(ctx, verts);
 
     return iter.nextx / scale;
 }
@@ -1996,16 +1996,16 @@ NVGvertex :: struct {
 }
 
 NVGpath :: struct {
-    first: s32;
-    count: s32;
-    closed: bool;
-    nbevel: s32;
-    fill: *NVGvertex;
-    nfill: s32;
-    stroke: *NVGvertex;
-    nstroke: s32;
-    winding: NVGwinding;
-    convex: bool;
+    first: s32;             // offset into the list of points on the cache
+    count: s32;             // number of points of the list of points on the cache
+    closed: bool;           // indicates if the path is closed
+    nbevel: s32;            // number of vertices needed for beveling
+    fill: *NVGvertex;       // pointer to the start of vertices on the cache for the fill
+    nfill: s32;             // number of vertices for the fill
+    stroke: *NVGvertex;     // pointer to the start of vertices on the cache for the stroke
+    nstroke: s32;           // number of vertices for the stroke
+    winding: NVGwinding;    // indicates the winding of the path (CW or CCW)
+    convex: bool;           // indicates if the path is convex
 }
 
 NVGparams :: struct {
@@ -2019,9 +2019,9 @@ NVGparams :: struct {
     renderViewport: (uptr: *void, width: f32, height: f32, devicePixelRatio: f32);
     renderCancel: (uptr: *void);
     renderFlush: (uptr: *void);
-    renderFill: (uptr: *void, paint: *NVGpaint, compositeOperation: NVGcompositeOperationState, scissor: *NVGscissor, fringe: f32, bounds: [] f32, paths: *NVGpath, npaths: s32);
-    renderStroke: (uptr: *void, paint: *NVGpaint, compositeOperation: NVGcompositeOperationState, scissor: *NVGscissor, fringe: f32, strokeWidth: f32, paths: *NVGpath, npaths: s32);
-    renderTriangles: (uptr: *void, paint: *NVGpaint, compositeOperation: NVGcompositeOperationState, scissor: *NVGscissor, verts: *NVGvertex, nverts: s32);
+    renderFill: (uptr: *void, paint: *NVGpaint, compositeOperation: NVGcompositeOperationState, scissor: *NVGscissor, fringe: f32, bounds: [] f32, paths: *List(NVGpath));
+    renderStroke: (uptr: *void, paint: *NVGpaint, compositeOperation: NVGcompositeOperationState, scissor: *NVGscissor, fringe: f32, strokeWidth: f32, paths: *List(NVGpath));
+    renderTriangles: (uptr: *void, paint: *NVGpaint, compositeOperation: NVGcompositeOperationState, scissor: *NVGscissor, verts: *List(NVGvertex));
     renderDelete: (uptr: *void);
 }
 
@@ -2594,12 +2594,12 @@ nvg__roundJoin :: (
             u := i / cast(f32)(n - 1);
             a := a0 + u * (a1 - a0);
             av := vec2(cosf(a), sinf(a));
-            add(dst, nvg__vtx(v1 + av * lw, lu,1));
-            add(dst, nvg__vtx(v1, 0.5,1));
+            add(dst, nvg__vtx(v1 + av * lw, lu, 1));
+            add(dst, nvg__vtx(v1, 0.5, 1));
         }
 
-        add(dst, nvg__vtx(v1 + dl1 * rw, lu,1));
-        add(dst, nvg__vtx(r1, ru,1));
+        add(dst, nvg__vtx(v1 + dl1 * rw, lu, 1));
+        add(dst, nvg__vtx(r1, ru, 1));
     }
 }
 
@@ -2934,6 +2934,7 @@ nvg__expandFill :: (ctx: *NVGcontext, w: f32, lineJoin: NVGlineCap, miterLimit: 
     cache := ctx.cache;
 
     fringe := w > 0.0;
+    woff := 0.5 * w;
 
     nvg__calculateJoins(ctx, w, lineJoin, miterLimit);
 
@@ -2950,7 +2951,7 @@ nvg__expandFill :: (ctx: *NVGcontext, w: f32, lineJoin: NVGlineCap, miterLimit: 
     ensureCapacity(verts, nverts);
     clear(verts);
 
-    convex := cache.paths.count == 1 && cache.paths[0].convex;
+    convex := cache.paths.count == 1 && get(*cache.paths, 0).convex;
 
     for * path : cache.paths {
         pts := ref(*cache.points, path.first);
@@ -2958,8 +2959,6 @@ nvg__expandFill :: (ctx: *NVGcontext, w: f32, lineJoin: NVGlineCap, miterLimit: 
         prevCount := verts.count;
 
         // Calculate shape vertices.
-        woff := 0.5 * w;
-
         if (fringe) {
             // Looping
             p0 := *pts[path.count - 1];
@@ -2967,19 +2966,20 @@ nvg__expandFill :: (ctx: *NVGcontext, w: f32, lineJoin: NVGlineCap, miterLimit: 
 
             for j : 0..path.count-1 {
                 if (p1.flags & .NVG_PT_BEVEL) {
-                    dl0 := perpendicularCW(p0.delta);
-                    dl1 := perpendicularCW(p1.delta);
                     if (p1.flags & .NVG_PT_LEFT) {
                         l := p1.pos + p1.dm * woff;
                         add(verts, nvg__vtx(l, 0.5, 1));
                     } else {
+                        dl0 := perpendicularCW(p0.delta);
+                        dl1 := perpendicularCW(p1.delta);
                         l0 := p1.pos + dl0 * woff;
                         l1 := p1.pos + dl1 * woff;
                         add(verts, nvg__vtx(l0, 0.5, 1));
                         add(verts, nvg__vtx(l1, 0.5, 1));
                     }
                 } else {
-                    add(verts, nvg__vtx(p1.pos + p1.dm * woff, 0.5, 1));
+                    l := p1.pos + p1.dm * woff;
+                    add(verts, nvg__vtx(l, 0.5, 1));
                 }
                 p0 = p1;
                 p1 += 1;
@@ -3158,7 +3158,7 @@ nvg__allocTextAtlas :: (ctx: *NVGcontext) -> bool {
     return true;
 }
 
-nvg__renderText :: (ctx: *NVGcontext, verts: *NVGvertex, nverts: s32) {
+nvg__renderText :: (ctx: *NVGcontext, verts: *List(NVGvertex)) {
     state := nvg__getState(ctx);
     paint := state.fill;
 
@@ -3169,10 +3169,10 @@ nvg__renderText :: (ctx: *NVGcontext, verts: *NVGvertex, nverts: s32) {
     paint.innerColor.a *= state.alpha;
     paint.outerColor.a *= state.alpha;
 
-    ctx.params.renderTriangles(ctx.params.userPtr, *paint, state.compositeOperation, *state.scissor, verts, nverts);
+    ctx.params.renderTriangles(ctx.params.userPtr, *paint, state.compositeOperation, *state.scissor, verts);
 
     ctx.drawCallCount += 1;
-    ctx.textTriCount += nverts / 3;
+    ctx.textTriCount += cast(s32) verts.count / 3;
 }
 
 nvg__nvgAlignToFONSAlign :: inline (align: NVGalign) -> FONSalign {
