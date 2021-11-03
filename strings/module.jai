@@ -138,8 +138,8 @@ subString :: inline (str: string, index: s64) -> string #must {
     return subString(str, index, str.count - index);
 }
 
-subStringCount :: String.count;
-subStringCountAny :: String.count_any;
+// subStringCount :: String.count;
+// subStringCountAny :: String.count_any;
 
 join :: String.join;
 
@@ -155,39 +155,39 @@ stringFromChar :: (c: u8) -> string {
     return str;
 }
 
-split :: (str: string, separator: u8, $$ options := StringSplitOptions.None) -> [] string {
-    separatorStr := stringFromChar(separator);
-    defer free(separatorStr);
-    return split(str, separatorStr, options);
-}
+// split :: (str: string, separator: u8, $$ options := StringSplitOptions.None) -> [] string {
+//     separatorStr := stringFromChar(separator);
+//     defer free(separatorStr);
+//     return split(str, separatorStr, options);
+// }
 
-split :: (str: string, separator: string, $$ options := StringSplitOptions.None) -> [] string {
-    entries := String.split(str, separator);
-    return processEntriesAfterSplit(entries, options);
-}
+// split :: (str: string, separator: string, $$ options := StringSplitOptions.None) -> [] string {
+//     entries := String.split(str, separator);
+//     return processEntriesAfterSplit(entries, options);
+// }
 
-splitAny :: (str: string, separators: string, $$ options := StringSplitOptions.None) -> [] string {
-    if (isEmpty(str)) {
-        return .[];
-    }
+// splitAny :: (str: string, separators: string, $$ options := StringSplitOptions.None) -> [] string {
+//     if (isEmpty(str)) {
+//         return .[];
+//     }
 
-    n := subStringCountAny(str, separators) + 1;
-    entries := allocArray(string, n);
+//     n := subStringCountAny(str, separators) + 1;
+//     entries := allocArray(string, n);
 
-    i := 0;
-    last := 0;
+//     i := 0;
+//     last := 0;
 
-    for k : 0..str.count-1 {
-        if (isAny(str[k], separators)) {
-            entries[i] = subString(str, last, k - last);
-            last = k + 1;
-            i += 1;
-        }
-    }
-    assert(i == n - 1);
-    entries[i] = subString(str, last, str.count - last);
-    return processEntriesAfterSplit(entries, options);
-}
+//     for k : 0..str.count-1 {
+//         if (isAny(str[k], separators)) {
+//             entries[i] = subString(str, last, k - last);
+//             last = k + 1;
+//             i += 1;
+//         }
+//     }
+//     assert(i == n - 1);
+//     entries[i] = subString(str, last, str.count - last);
+//     return processEntriesAfterSplit(entries, options);
+// }
 
 for_expansion :: (str: *string, body: Code, flags: For_Flags) #expand {
     #assert(!(flags & .REVERSE));

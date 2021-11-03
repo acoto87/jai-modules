@@ -9,3 +9,5 @@ flecs-jai/examples/*/.vs
 raylib/examples/*/*.exe
 raylib/examples/*/*.pdb
 raylib/examples/*/*.dll
+collections/tests/*.exe
+collections/tests/*.pdb

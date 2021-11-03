@@ -200,7 +200,6 @@ getSourceFiles :: Compiler.compiler_get_source_files;
 customLinkCommandIsComplete :: Compiler.compiler_custom_link_command_is_complete;
 getStructLocation :: Compiler.compiler_get_struct_location;
 addLibrarySearchDirectory :: Compiler.compiler_add_library_search_directory;
-addDataSection :: Compiler.add_data_section;
 preCompile :: Compiler.precompile;
 compileAndGetSingleProcedure :: Compiler.compile_and_get_single_procedure;
 makeIntegerLiteral :: Compiler.make_integer_literal;

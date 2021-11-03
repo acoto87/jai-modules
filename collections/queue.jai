@@ -41,6 +41,12 @@ createQueue :: inline ($T: Type) -> Queue(T) {
     return queue;
 }
 
+createQueue :: inline ($T: Type, capacity: s64) -> Queue(T) {
+    queue: Queue(T);
+    init(*queue, capacity);
+    return queue;
+}
+
 createQueue :: inline ($T: Type, options: QueueOptions(T)) -> Queue(T) {
     queue: Queue(T);
     init(*queue, options);
@@ -51,8 +57,14 @@ init :: inline (queue: *$T/Queue) {
     init(queue, QueueOptions(T.TItem).{});
 }
 
+init :: inline (queue: *$T/Queue, capacity: s64) {
+    options: QueueOptions(T.TItem);
+    options.capacity = capacity;
+    init(queue, options);
+}
+
 init :: (queue: *$T/Queue, options: QueueOptions(T.TItem)) {
-    assert(options.capacity > 0);
+    //assert(options.capacity > 0);
 
     queue.head = 0;
     queue.tail = 0;
@@ -212,7 +224,7 @@ resize :: (queue: *$T/Queue) {
     queue.capacity = oldCapacity * 2;
     queue.items = alloc(T.TItem, queue.capacity, queue.allocator, initialized = false);
 
-    if (queue.head > queue.tail) {
+    if (queue.head >= queue.tail) {
         memoryCopy(queue.items, oldItems + queue.head, oldCapacity - queue.head);
         memoryCopy(queue.items + oldCapacity - queue.head, oldItems, (queue.head + queue.count) % oldCapacity);
     } else {

@@ -18,8 +18,10 @@
 // 3. This notice may not be removed or altered from any source distribution.
 //
 // It defines a strongly-typed list of elements and its operations.
+// This list doesn't mantain order, when an item is removed,
+// the last item on the list is moved to the deleted position.
 //
-List :: struct(TItem: Type) {
+UnorderedList :: struct(TItem: Type) {
     count: s64;
     capacity: s64;
     freeItems: bool;
@@ -27,41 +29,41 @@ List :: struct(TItem: Type) {
     items: *TItem;
 }
 
-ListOptions :: struct {
+UnorderedListOptions :: struct(TItem: Type) {
     capacity: s64 = 8;
     freeItems: bool;
     allocator: Allocator;
 }
 
-createList :: inline ($T: Type) -> List(T) {
-    list: List(T);
+createUnorderedList :: inline ($T: Type) -> UnorderedList(T) {
+    list: UnorderedList(T);
     init(*list);
     return list;
 }
 
-createList :: inline ($T: Type, capacity: s64) -> List(T) {
-    list: List(T);
+createUnorderedList :: inline ($T: Type, capacity: s64) -> UnorderedList(T) {
+    list: UnorderedList(T);
     init(*list, capacity);
     return list;
 }
 
-createList :: inline ($T: Type, options: ListOptions) -> List(T) {
-    list: List(T);
+createUnorderedList :: inline ($T: Type, options: UnorderedListOptions(T)) -> UnorderedList(T) {
+    list: UnorderedList(T);
     init(*list, options);
     return list;
 }
 
-init :: inline (list: *$T/List) {
-    init(list, ListOptions.{});
+init :: inline (list: *$T/UnorderedList) {
+    init(list, UnorderedListOptions(T.TItem).{});
 }
 
-init :: inline (list: *$T/List, capacity: s64) {
-    options: ListOptions;
+init :: inline (list: *$T/UnorderedList, capacity: s64) {
+    options: UnorderedListOptions(T.TItem);
     options.capacity = capacity;
     init(list, options);
 }
 
-init :: (list: *$T/List, options: ListOptions) {
+init :: (list: *$T/UnorderedList, options: UnorderedListOptions(T.TItem)) {
     assert(options.capacity > 0);
 
     list.count = 0;
@@ -71,7 +73,7 @@ init :: (list: *$T/List, options: ListOptions) {
     list.items = alloc(T.TItem, list.capacity, list.allocator, initialized = false);
 }
 
-uninit :: (list: *$T/List, freeList: bool = false) {
+uninit :: (list: *$T/UnorderedList, freeList: bool = false) {
     if (list.items) {
         clear(list);
         free(list.items, list.allocator);
@@ -82,7 +84,7 @@ uninit :: (list: *$T/List, freeList: bool = false) {
     }
 }
 
-clear :: (list: *$T/List) {
+clear :: (list: *$T/UnorderedList) {
     assert(list.items != null);
 
     #if #run isPointer(T.TItem) {
@@ -96,27 +98,27 @@ clear :: (list: *$T/List) {
     list.count = 0;
 }
 
-add :: inline (list: *$T/List, item: T.TItem) {
+add :: inline (list: *$T/UnorderedList, item: T.TItem) {
     insert(list, list.count, item);
 }
 
-addNew :: inline (list: *$T/List) -> *T.TItem {
+addNew :: inline (list: *$T/UnorderedList) -> *T.TItem {
     return insertNew(list, list.count);
 }
 
-addRange :: inline (list: *$T/List, items: ..T.TItem) {
+addRange :: inline (list: *$T/UnorderedList, items: ..T.TItem) {
     insertRange(list, list.count, ..items);
 }
 
-addRange :: inline (list: *$T/List, other: *List(T.TItem)) {
+addRange :: inline (list: *$T/UnorderedList, other: *List(T.TItem)) {
     insertRange(list, list.count, other);
 }
 
-addRange :: inline (list: *$T/List, items: *T.TItem, count: s64) {
+addRange :: inline (list: *$T/UnorderedList, items: *T.TItem, count: s64) {
     insertRange(list, list.count, items, count);
 }
 
-insert :: (list: *$T/List, index: s64, item: T.TItem) {
+insert :: (list: *$T/UnorderedList, index: s64, item: T.TItem) {
     assert(list.items != null);
     assert(index >= 0 && index <= list.count);
 
@@ -132,7 +134,7 @@ insert :: (list: *$T/List, index: s64, item: T.TItem) {
     list.count = newCount;
 }
 
-insertNew :: (list: *$T/List, index: s64) -> *T.TItem {
+insertNew :: (list: *$T/UnorderedList, index: s64) -> *T.TItem {
     assert(list.items != null);
     assert(index >= 0 && index <= list.count);
 
@@ -150,15 +152,15 @@ insertNew :: (list: *$T/List, index: s64) -> *T.TItem {
     return *list.items[index];
 }
 
-insertRange :: inline (list: *$T/List, index: s64, items: ..T.TItem) {
+insertRange :: inline (list: *$T/UnorderedList, index: s64, items: ..T.TItem) {
     insertRange(list, index, items.data, items.count);
 }
 
-insertRange :: inline (list: *$T/List, index: s64, other: *List(T.TItem)) {
+insertRange :: inline (list: *$T/UnorderedList, index: s64, other: *List(T.TItem)) {
     insertRange(list, index, other.items, other.count);
 }
 
-insertRange :: (list: *$T/List, index: s64, items: *T.TItem, count: s64) {
+insertRange :: (list: *$T/UnorderedList, index: s64, items: *T.TItem, count: s64) {
     assert(list.items != null);
     assert(index >= 0 && index <= list.count);
 
@@ -178,7 +180,7 @@ insertRange :: (list: *$T/List, index: s64, items: *T.TItem, count: s64) {
     list.count = newCount;
 }
 
-indexOf :: (list: *$T/List, item: T.TItem) -> s64 {
+indexOf :: (list: *$T/UnorderedList, item: T.TItem) -> s64 {
     assert(list.items != null);
 
     for i : 0..list.count - 1 {
@@ -190,7 +192,7 @@ indexOf :: (list: *$T/List, item: T.TItem) -> s64 {
     return -1;
 }
 
-indexOf :: (list: *$T/List, item: T.TItem, equalsFn: (T.TItem, T.TItem) -> bool) -> s64 {
+indexOf :: (list: *$T/UnorderedList, item: T.TItem, equalsFn: (T.TItem, T.TItem) -> bool) -> s64 {
     assert(list.items != null);
     assert(equalsFn != null);
 
@@ -203,33 +205,33 @@ indexOf :: (list: *$T/List, item: T.TItem, equalsFn: (T.TItem, T.TItem) -> bool)
     return -1;
 }
 
-contains :: inline (list: *$T/List, item: T.TItem) -> bool {
+contains :: inline (list: *$T/UnorderedList, item: T.TItem) -> bool {
     return indexOf(list, item) >= 0;
 }
 
-contains :: inline (list: *$T/List, item: T.TItem, equalsFn: (T.TItem, T.TItem) -> bool) -> bool {
+contains :: inline (list: *$T/UnorderedList, item: T.TItem, equalsFn: (T.TItem, T.TItem) -> bool) -> bool {
     return indexOf(list, item, equalsFn) >= 0;
 }
 
-removeItem :: inline (list: *$T/List, item: T.TItem) {
+removeItem :: inline (list: *$T/UnorderedList, item: T.TItem) {
     index := indexOf(list, item);
     if (index >= 0 && index < list.count) {
         removeAt(list, index);
     }
 }
 
-removeItem :: inline (list: *$T/List, item: T.TItem, equalsFn: (T.TItem, T.TItem) -> bool) {
+removeItem :: inline (list: *$T/UnorderedList, item: T.TItem, equalsFn: (T.TItem, T.TItem) -> bool) {
     index := indexOf(list, item, equalsFn);
     if (index >= 0 && index < list.count) {
         removeAt(list, index);
     }
 }
 
-removeAt :: inline (list: *$T/List, index: s64) {
+removeAt :: inline (list: *$T/UnorderedList, index: s64) {
     removeAtRange(list, index, 1);
 }
 
-removeAtRange :: (list: *$T/List, index: s64, count: s64) {
+removeAtRange :: (list: *$T/UnorderedList, index: s64, count: s64) {
     assert(list.items != null);
     assert(index >= 0 && index < list.count);
 
@@ -254,11 +256,14 @@ removeAtRange :: (list: *$T/List, index: s64, count: s64) {
         }
     }
 
-    memoryMove(list.items + index, list.items + index + count, list.count - index - count);
+    if (index < list.count - 1) {
+        memoryMove(list.items + index, list.items + list.count - count, count);
+    }
+
     list.count -= count;
 }
 
-reverse :: (list: *$T/List) {
+reverse :: (list: *$T/UnorderedList) {
     assert(list.items != null);
 
     i := 0;
@@ -273,29 +278,29 @@ reverse :: (list: *$T/List) {
     }
 }
 
-sort :: inline (list: *$T/List, compareFn: (T.TItem, T.TItem) -> s64) {
+sort :: inline (list: *$T/UnorderedList, compareFn: (T.TItem, T.TItem) -> s64) {
     assert(list.items != null);
     qsort(list.items, 0, list.count - 1, compareFn);
 }
 
-sort :: inline (list: *$T/List, byFn: (T.TItem) -> $R) {
+sort :: inline (list: *$T/UnorderedList, byFn: (T.TItem) -> $R) {
     assert(list.items != null);
     qsort(list.items, 0, list.count - 1, byFn);
 }
 
-get :: inline (list: *$T/List, index: s64) -> T.TItem {
+get :: inline (list: *$T/UnorderedList, index: s64) -> T.TItem {
     assert(list.items != null);
     assert(index >= 0 && index < list.count);
     return list.items[index];
 }
 
-ref :: inline (list: *$T/List, index: s64) -> *T.TItem {
+ref :: inline (list: *$T/UnorderedList, index: s64) -> *T.TItem {
     assert(list.items != null);
     assert(index >= 0 && index < list.count);
     return *list.items[index];
 }
 
-set :: inline (list: *$T/List, index: s64, item: T.TItem) {
+set :: inline (list: *$T/UnorderedList, index: s64, item: T.TItem) {
     assert(list.items != null);
     assert(index >= 0 && index < list.count);
 
@@ -308,30 +313,21 @@ set :: inline (list: *$T/List, index: s64, item: T.TItem) {
     list.items[index] = item;
 }
 
-fromArray :: inline (array: [] $T, options: ListOptions) -> List(T) {
+fromArray :: inline (array: [] $T, options: UnorderedListOptions(T)) -> UnorderedList(T) {
     list: List(T);
     init(*list, options);
     addRange(*list, ..array);
     return list;
 }
 
-toArray :: (list: *$T/List, array: [] T.TItem, index: s64 = 0) {
+toArray :: (list: *$T/UnorderedList, array: [] T.TItem, index: s64 = 0) {
     assert(list.items != null);
     assert(array.count - index >= list.count);
     memoryCopy(array.data + index, list.items, list.count);
     return array;
 }
 
-reserve :: inline (list: *$T/List, capacity: s64) {
-    assert(list.items != null);
-    assert(capacity > 0);
-
-    if (capacity > list.capacity) {
-        resize(list, capacity);
-    }
-}
-
-for_expansion :: (list: *$T/List, body: Code, flags: For_Flags) #expand {
+for_expansion :: (list: *$T/UnorderedList, body: Code, flags: For_Flags) #expand {
     #assert(!(flags & .REVERSE));
 
     assert(list.items != null);
@@ -351,11 +347,17 @@ for_expansion :: (list: *$T/List, body: Code, flags: For_Flags) #expand {
     }
 }
 
+reserve :: inline (list: *$T/UnorderedList, capacity: s64) {
+    if (capacity > list.capacity) {
+        resize(list, capacity);
+    }
+}
+
 #scope_file
 
 #import "utils";
 
-resize :: (list: *$T/List, minCapacity: s64) {
+resize :: (list: *$T/UnorderedList, minCapacity: s64) {
     oldCapacity := list.capacity;
 
     list.capacity = oldCapacity * 2;

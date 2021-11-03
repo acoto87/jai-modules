@@ -5,17 +5,17 @@ Rect :: struct {
 
 RECT_EMPTY :: Rect.{};
 
-getTopLeft :: inline (r: Rect) -> Vec2 { return vec2(r.x, r.y); }
-getTopCenter :: inline (r: Rect) -> Vec2 { return vec2(r.x + r.w * 0.5, r.y); }
-getTopRight :: inline (r: Rect) -> Vec2 { return vec2(r.x + r.w, r.y); }
-getMiddleLeft :: inline (r: Rect) -> Vec2 { return vec2(r.x, r.y + r.h * 0.5); }
+getTopLeft      :: inline (r: Rect) -> Vec2 { return vec2(r.x, r.y); }
+getTopCenter    :: inline (r: Rect) -> Vec2 { return vec2(r.x + r.w * 0.5, r.y); }
+getTopRight     :: inline (r: Rect) -> Vec2 { return vec2(r.x + r.w, r.y); }
+getMiddleLeft   :: inline (r: Rect) -> Vec2 { return vec2(r.x, r.y + r.h * 0.5); }
 getMiddleCenter :: inline (r: Rect) -> Vec2 { return vec2(r.x + r.w * 0.5, r.y + r.h * 0.5); }
-getMiddleRight :: inline (r: Rect) -> Vec2 { return vec2(r.x + r.w, r.y + r.h * 0.5); }
-getBottomLeft :: inline (r: Rect) -> Vec2 { return vec2(r.x, r.y + r.h); }
+getMiddleRight  :: inline (r: Rect) -> Vec2 { return vec2(r.x + r.w, r.y + r.h * 0.5); }
+getBottomLeft   :: inline (r: Rect) -> Vec2 { return vec2(r.x, r.y + r.h); }
 getBottomCenter :: inline (r: Rect) -> Vec2 { return vec2(r.x + r.w * 0.5, r.y + r.h); }
-getBottomRight :: inline (r: Rect) -> Vec2 { return vec2(r.x + r.w, r.y + r.h); }
-getCenter :: inline (r: Rect) -> Vec2 { return vec2(r.x + r.w * 0.5, r.y + r.h * 0.5); }
-getSize :: inline (r: Rect) -> Vec2 { return vec2(r.w, r.h); }
+getBottomRight  :: inline (r: Rect) -> Vec2 { return vec2(r.x + r.w, r.y + r.h); }
+getCenter       :: inline (r: Rect) -> Vec2 { return vec2(r.x + r.w * 0.5, r.y + r.h * 0.5); }
+getSize         :: inline (r: Rect) -> Vec2 { return vec2(r.w, r.h); }
 
 rect :: inline (x: float32, y: float32, w: float32, h: float32) -> Rect {
     r: Rect = ---;

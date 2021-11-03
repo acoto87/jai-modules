@@ -110,6 +110,13 @@ angleClockwise :: inline (v1: Vec2, v2: Vec2) -> f32 {
     return atan2f(det, dot1);
 }
 
+rotate :: inline (v: Vec2, rads: f32) -> Vec2 {
+    r: Vec2 = ---;
+    r.x = v.x * cosf(rads) - v.y * sinf(rads);
+    r.y = v.x * sinf(rads) + v.y * cosf(rads);
+    return r;
+}
+
 rotate90CW :: inline (v: Vec2) -> Vec2 {
     return vec2(v.y, -v.x);
 }

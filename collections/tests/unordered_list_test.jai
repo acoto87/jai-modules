@@ -24,7 +24,7 @@ NUMBER_OF_ITEMS_RANGE :: 50000;
 INDEX_RANGE_AT :: 100;
 
 testAdd :: () {
-    list := createList(s64);
+    list := createUnorderedList(s64);
     defer uninit(*list);
 
     for i : 0..NUMBER_OF_ITEMS-1 {
@@ -36,7 +36,7 @@ testAdd :: () {
 }
 
 testInsert :: () {
-    list := createList(s64);
+    list := createUnorderedList(s64);
     defer uninit(*list);
 
     for i : 0..NUMBER_OF_ITEMS-1 {
@@ -53,7 +53,7 @@ testInsert :: () {
 }
 
 testInsertRange :: () {
-    list := createList(s64);
+    list := createUnorderedList(s64);
     defer uninit(*list);
 
     for i : 0..NUMBER_OF_ITEMS-1 {
@@ -77,7 +77,7 @@ testInsertRange :: () {
 }
 
 testContains :: () {
-    list := createList(s64);
+    list := createUnorderedList(s64);
     defer uninit(*list);
 
     for i : 0..NUMBER_OF_ITEMS-1 {
@@ -91,7 +91,7 @@ testContains :: () {
 }
 
 testRemoveByIndex :: () {
-    list := createList(s64);
+    list := createUnorderedList(s64);
     defer uninit(*list);
 
     for i : 0..NUMBER_OF_ITEMS-1 {
@@ -109,7 +109,7 @@ testRemoveByIndex :: () {
 }
 
 testRemoveByValue :: () {
-    list := createList(s64);
+    list := createUnorderedList(s64);
     defer uninit(*list);
 
     for i : 0..NUMBER_OF_ITEMS-1 {
@@ -128,7 +128,7 @@ testRemoveByValue :: () {
 }
 
 testRemoveRange :: () {
-    list := createList(s64);
+    list := createUnorderedList(s64);
     defer uninit(*list);
 
     for i : 0..NUMBER_OF_ITEMS-1 {
@@ -149,7 +149,7 @@ testRemoveRange :: () {
 }
 
 testSortBy :: () {
-    list := createList(s64);
+    list := createUnorderedList(s64);
     defer uninit(*list);
 
     for i : 0..NUMBER_OF_ITEMS-1 {
@@ -164,7 +164,7 @@ testSortBy :: () {
 }
 
 testSortCompare :: () {
-    list := createList(s64);
+    list := createUnorderedList(s64);
     defer uninit(*list);
 
     for i : 0..NUMBER_OF_ITEMS-1 {
@@ -179,7 +179,7 @@ testSortCompare :: () {
 }
 
 testReserve :: () {
-    list := createList(s64);
+    list := createUnorderedList(s64);
     defer uninit(*list);
 
     reserve(*list, NUMBER_OF_ITEMS);
@@ -188,7 +188,7 @@ testReserve :: () {
 }
 
 testIteration :: () {
-    list := createList(s64);
+    list := createUnorderedList(s64);
     defer uninit(*list);
 
     for i : 0..NUMBER_OF_ITEMS-1 {
@@ -199,155 +199,3 @@ testIteration :: () {
         assertEqual(index, item);
     }
 }
-
-// referenceTypeTest :: (count: u32 = 100000) {
-//     Entry :: struct {
-//         index: s32;
-//         name: string;
-//     };
-
-//     entryEquals :: (e1: *Entry, e2: *Entry) -> bool {
-//         return e1.index == e2.index;
-//     };
-
-//     options: ListOptions(*Entry);
-//     options.freeItems = true;
-
-//     list: List(*Entry);
-//     init(*list, options);
-//     defer uninit(*list);
-
-//     entries := allocArray(*Entry, count);
-
-//     print("--- Start reference type tests ---\n");
-
-//     print("\n");
-
-//     measure(sprint("test 1: add % objects", count), #code {
-//         for i : 0..count-1 {
-//             entry := alloc(Entry);
-//             entry.index = xx i;
-//             entry.name = "entry";
-//             add(*list, entry);
-//             assert(list[list.count - 1].index == xx i);
-//             entries[i] = entry;
-//         }
-//     });
-
-//     print("\n");
-
-//     measure(sprint("test 2: contains % objects", count / 2), #code {
-//         for i : 0..count/2-1 {
-//             entry := entries[randomNext() % count];
-//             assert(contains(*list, entry, entryEquals));
-//         }
-//     });
-
-//     print("\n");
-
-//     measure(sprint("test 3: insert % objects", count / 2), #code {
-//         for i : 0..count/2-1 {
-//             entry := alloc(Entry);
-//             entry.index = xx (randomNext() % list.count);
-//             entry.name = "entry";
-//             insert(*list, entry.index, entry);
-//             assert(list[entry.index] == entry);
-//         }
-//     });
-
-//     print("\n");
-
-//     measure(sprint("test 4: remove by index % objects", count / 2), #code {
-//         for i : 0..count/2-1 {
-//             index := randomNext() % (list.count - 1);
-//             entry := list[index + 1];
-//             removeAt(*list, index);
-//             assert(list[index] == entry);
-//         }
-//     });
-
-//     print("\n");
-
-//     free(entries);
-
-//     entries = allocArray(*Entry, count/2);
-//     for i : 0..count/2-1 {
-//         entry := alloc(Entry);
-//         entry.index = xx (randomNext() % list.count);
-//         entry.name = "negative";
-//         insert(*list, entry.index, entry);
-//         entries[i] = entry;
-//     }
-
-//     measure(sprint("test 5: remove by value % objects", count / 2), #code {
-//         for i : 0..count/2-1 {
-//             removeItem(*list, entries[i]);
-//         }
-//     }, post = #code {
-//         for i : 0..list.count-1 {
-//             assert(list[i].name == "negative");
-//         }
-//     });
-
-//     print("\n");
-
-//     rangeCount :: 50000;
-//     rangeAt :: 100;
-
-//     rangeValues := allocArray(*Entry, rangeCount);
-//     for i : 0..rangeCount-1 {
-//         entry := alloc(Entry);
-//         entry.index = xx -i;
-//         entry.name = "insert range";
-//         rangeValues[i] = entry;
-//     }
-
-//     measure(sprint("test 6: insert range % objects", rangeCount), #code {
-//         insertRange(*list, rangeAt, ..rangeValues);
-//     }, post = #code {
-//         for i : 0..rangeCount-1 {
-//             assert(list[rangeAt + i] == rangeValues[i]);
-//         }
-//     });
-
-//     print("\n");
-
-//     measure(sprint("test 7: remove range % objects", rangeCount), #code {
-//         removeAtRange(*list, rangeAt, rangeCount);
-//     }, post = #code {
-//         for i : 0..rangeCount-1 {
-//             assert(list[rangeAt + i].index >= 0);
-//         }
-//     });
-
-//     free(rangeValues);
-
-//     print("\n");
-
-//     measure(sprint("test 8: sorting with byFn % objects", list.count), #code {
-//         sort(*list, (item: *Entry) -> s32 {
-//             return item.index;
-//         });
-//     }, post = #code {
-//         for i : 1..list.count-1 {
-//             assert(list[i-1] <= list[i]);
-//         }
-//     });
-
-//     print("\n");
-
-//     measure(sprint("test 9: sorting with compareFn % objects", list.count), #code {
-//         sort(*list, (a: *Entry, b: *Entry) -> s64 {
-//             if (a.index == b.index) {
-//                 return xx -compare(a.name, b.name);
-//             }
-//             return xx (b.index - a.index);
-//         });
-//     }, post = #code {
-//         for i : 1..list.count-1 {
-//             assert(list[i-1] >= list[i]);
-//         }
-//     });
-
-//     print("--- End reference type tests ---\n");
-// }
